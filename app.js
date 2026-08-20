@@ -1,4 +1,3 @@
-alert('app.js chargé');
 /* Study Planner - app.js
    Interface entièrement en français.
    Persistance via localStorage sous la clé "studyPlannerData".
