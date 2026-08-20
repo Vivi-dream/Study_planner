@@ -414,26 +414,105 @@ function renderTasks(){
 }
 
 // Lessons render
-function renderLessons(){
-  const el = document.getElementById('lessonsList');
-  el.innerHTML = '';
-  if(store.lessons.length===0) el.innerHTML = '<div class="text-muted">Aucune leçon. Ajoutez une leçon et activez la méthode 2-2-5-7 si souhaité.</div>';
-  store.lessons.sort((a,b)=>new Date(a.date)-new Date(b.date)).forEach(l=>{
-    const item = document.createElement('div'); item.className='list-item';
-    const subj = store.subjects.find(s=>s.id===l.subjectId);
-    item.innerHTML = `<div>
-        <div style="font-weight:700">${l.titre}</div>
-        <div class="meta">${subj?subj.name:''} • ${formatDateReadable(l.date)}</div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
-        <div style="display:flex;gap:6px;">
-          <button class="btn small" data-action="view" data-id="${l.id}">Voir</button>
-          <button class="btn small" data-action="delete" data-id="${l.id}">Supprimer</button>
-        </div>
-      </div>`;
-    el.appendChild(item);
+function renderGradesChart(){
+  const canvas = document.getElementById('gradesChart');
+  if (!canvas) return;
+
+  const ctx = canvas.getContext('2d');
+
+  // Détruire l'ancien graphique s'il existe
+  if (gradesChart) {
+    gradesChart.destroy();
+    gradesChart = null;
+  }
+
+  // Une note = un point
+  const labels = store.evals
+    .filter(e => e.vraie != null)
+    .map(e => formatDateReadable(e.date));
+
+  const values = store.evals
+    .filter(e => e.vraie != null)
+    .map(e => Number(e.vraie));
+
+  gradesChart = new Chart(ctx, {
+    type: 'line',
+
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Notes',
+        data: values,
+        borderColor: '#ff7fbf',
+        backgroundColor: '#ffd0e0',
+        borderWidth: 3,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        fill: false,
+        tension: 0.25
+      }]
+    },
+
+    options: {
+      responsive: true,
+
+      plugins: {
+        legend: {
+          position: 'top'
+        }
+      },
+
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: 'Date'
+          }
+        },
+
+        y: {
+          min: 0,
+          max: 20,
+          title: {
+            display: true,
+            text: 'Note'
+          }
+        }
+      }
+    }
   });
 
+  // Résumé des moyennes
+  const summ = document.getElementById('gradesSummary');
+
+  if (!summ) return;
+
+  const general = computeGeneralAverage();
+
+  summ.innerHTML =
+    `<div style="display:flex;gap:8px;flex-wrap:wrap">
+      <div>
+        <strong>Moyenne générale</strong>
+        <div class="text-muted">
+          ${Number.isNaN(general) ? '—' : general.toFixed(2)}
+        </div>
+      </div>` +
+
+    store.subjects.map(s => {
+      const avg = computeSubjectAverage(s.id);
+
+      return `
+        <div>
+          <strong>${escapeHtml(s.name)}</strong>
+          <div class="text-muted">
+            ${Number.isNaN(avg) ? '—' : avg.toFixed(2)}
+          </div>
+        </div>
+      `;
+    }).join('') +
+
+    `</div>`;
+}
   el.querySelectorAll('button[data-action]').forEach(b=>{
     b.addEventListener('click', e=>{
       const id = e.target.dataset.id;
