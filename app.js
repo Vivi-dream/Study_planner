@@ -1,5 +1,6 @@
 console.log('debug: app start'); 
 window.addEventListener('error', function(e){ alert('Erreur JS : ' + e.message + '\nFichier: ' + e.filename + ':' + e.lineno); }); document.addEventListener('DOMContentLoaded', function(){ console.log('DOM prêt — debug'); alert('DOM prêt — debug'); });
+document.addEventListener('DOMContentLoaded', ()=>{ // debug visuel - supprimez ensuite document.body.style.outline = '6px solid rgba(255,0,128,0.35)'; const dbg = document.createElement('div'); dbg.textContent = 'DEBUG : script exécuté'; dbg.style.position='fixed'; dbg.style.bottom='10px'; dbg.style.left='10px'; dbg.style.background='rgba(255,255,255,0.9)'; dbg.style.padding='8px 10px'; dbg.style.borderRadius='8px'; dbg.style.boxShadow='0 6px 14px rgba(0,0,0,0.08)'; document.body.appendChild(dbg); });
 /* Study Planner - app.js
    Interface entièrement en français.
    Persistance via localStorage sous la clé "studyPlannerData".
