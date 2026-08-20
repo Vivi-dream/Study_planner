@@ -1,4 +1,5 @@
 console.log('debug: app start'); 
+window.addEventListener('error', function(e){ alert('Erreur JS : ' + e.message + '\nFichier: ' + e.filename + ':' + e.lineno); }); document.addEventListener('DOMContentLoaded', function(){ console.log('DOM prêt — debug'); alert('DOM prêt — debug'); });
 /* Study Planner - app.js
    Interface entièrement en français.
    Persistance via localStorage sous la clé "studyPlannerData".
