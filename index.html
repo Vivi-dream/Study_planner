@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Study Planner - Calendrier scolaire</title>
+
+  <!-- Google Fonts (elegant, readable) -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app" class="app">
+    <header class="header">
+      <div class="brand">
+        <div class="logo">📔</div>
+        <div>
+          <h1>Mon Planner Scolaire</h1>
+          <p class="subtitle">Organise. Révise. Réussis.</p>
+        </div>
+      </div>
+
+      <nav class="main-nav" role="navigation" aria-label="Navigation principale">
+        <button data-tab="calendrier" class="nav-btn active">Calendrier</button>
+        <button data-tab="planner" class="nav-btn">Planner</button>
+        <button data-tab="notes" class="nav-btn">Notes</button>
+      </nav>
+
+      <div class="header-actions">
+        <button id="exportBtn" class="btn small">Exporter (JSON)</button>
+        <label class="btn small btn-ghost">Importer (JSON)
+          <input id="importFile" type="file" accept="application/json" style="display:none">
+        </label>
+      </div>
+    </header>
+
+    <main class="main">
+      <!-- Dashboard / Overview (visible on calendrier tab) -->
+      <section id="dashboard" class="dashboard"></section>
+
+      <!-- Calendrier -->
+      <section id="calendrier" class="tab-content">
+        <div class="cal-header">
+          <div>
+            <button id="prevWeek" class="btn icon">&lt;</button>
+            <span id="weekLabel" class="week-label"></span>
+            <button id="nextWeek" class="btn icon">&gt;</button>
+          </div>
+          <div class="cal-actions">
+            <button id="addEventFromCal" class="btn rose">Nouvel événement</button>
+            <select id="subjectFilter" class="select">
+              <option value="all">Toutes les matières</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="weekCalendar" class="week-calendar" aria-live="polite"></div>
+      </section>
+
+      <!-- Planner -->
+      <section id="planner" class="tab-content hidden">
+        <div class="planner-grid">
+          <!-- LEFT: Devoirs & Évaluations -->
+          <div class="card">
+            <div class="card-head">
+              <h2>Devoirs &amp; Évaluations</h2>
+              <button id="addTaskBtn" class="btn rose small">+ Nouveau</button>
+            </div>
+            <div id="tasksList" class="list"></div>
+          </div>
+
+          <!-- RIGHT: Mes leçons -->
+          <div class="card">
+            <div class="card-head">
+              <h2>Mes leçons</h2>
+              <button id="addLessonBtn" class="btn rose small">+ Leçon</button>
+            </div>
+            <div id="lessonsList" class="list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Notes -->
+      <section id="notes" class="tab-content hidden">
+        <div class="notes-grid">
+          <div class="card">
+            <div class="card-head">
+              <h2>Évals (Pronostics & Vraies notes)</h2>
+              <button id="addEvalBtn" class="btn rose small">+ Évaluation</button>
+            </div>
+            <div id="evalsList" class="list"></div>
+          </div>
+
+          <div class="card">
+            <h2>Tableau de bord des notes</h2>
+            <canvas id="gradesChart" height="240"></canvas>
+            <div id="gradesSummary" class="grades-summary"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Floating modal area -->
+    <div id="modal" class="modal hidden" role="dialog" aria-modal="true"></div>
+
+    <footer class="footer">
+      <small>Design: girly • pastel • professionnel — Interface en français</small>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
