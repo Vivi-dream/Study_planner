@@ -97,44 +97,85 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
 // Nav
 function initNav(){
-  document.querySelectorAll('.nav-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  const navButtons = document.querySelectorAll('.nav-btn');
+  const tabs = document.querySelectorAll('.tab-content');
+  const dashboard = document.getElementById('dashboard');
+
+  navButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tabId = btn.dataset.tab;
+      const target = document.getElementById(tabId);
+
+      if (!target) {
+        console.error("Onglet introuvable :", tabId);
+        return;
+      }
+
+      // Enlever "active" de tous les boutons
+      navButtons.forEach(b => b.classList.remove('active'));
+
+      // Activer le bouton cliqué
       btn.classList.add('active');
-      const tab = btn.dataset.tab;
-      document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
-      document.getElementById(tab).classList.remove('hidden');
+
+      // Cacher tous les onglets
+      tabs.forEach(tab => {
+        tab.classList.add('hidden');
+      });
+
+      // Afficher l'onglet choisi
+      target.classList.remove('hidden');
+
+      // Afficher le dashboard uniquement sur Calendrier
+      if (dashboard) {
+        dashboard.style.display =
+          tabId === 'calendrier' ? '' : 'none';
+      }
     });
   });
 
-  // Import / Export
-  document.getElementById('exportBtn').addEventListener('click', ()=>{
+  // EXPORT
+  document.getElementById('exportBtn').addEventListener('click', () => {
     const data = JSON.stringify(store, null, 2);
-    const blob = new Blob([data], {type:'application/json'});
+    const blob = new Blob([data], {
+      type: 'application/json'
+    });
+
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'study-planner-export.json'; a.click();
+
+    a.href = url;
+    a.download = 'study-planner-export.json';
+    a.click();
+
     URL.revokeObjectURL(url);
   });
+
+  // IMPORT
   const importInput = document.getElementById('importFile');
-  importInput.addEventListener('change', (e)=>{
+
+  importInput.addEventListener('change', (e) => {
     const f = e.target.files[0];
-    if(!f) return;
+
+    if (!f) return;
+
     const reader = new FileReader();
-    reader.onload = ev => {
-      try{
+
+    reader.onload = (ev) => {
+      try {
         const data = JSON.parse(ev.target.result);
+
         store = data;
         saveStore();
+
         alert('Importation réussie');
-      }catch(err){
+      } catch (err) {
         alert('Fichier JSON invalide');
       }
     };
+
     reader.readAsText(f);
   });
 }
-
 // Buttons and modals
 function initButtons(){
   document.getElementById('addTaskBtn').addEventListener('click', ()=> openTaskModal());
