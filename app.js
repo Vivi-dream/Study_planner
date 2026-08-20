@@ -884,23 +884,29 @@ function computeSubjectAverage(subjectId) {
     e => e.subjectId == subjectId && e.vraie != null
   );
 
-  if (list.length === 0) return NaN;
+  if (list.length === 0) {
+    return NaN;
+  }
 
-  // Somme des coefficients
   const totalCoef = list.reduce((sum, e) => {
     const coef = Number(e.coef ?? e.coefficient) || 1;
     return sum + coef;
   }, 0);
 
-  // Somme pondérée des notes
   const weightedSum = list.reduce((sum, e) => {
-    const note = Number(e.vraie);
+    const value = Number(e.vraie);
     const coef = Number(e.coef ?? e.coefficient) || 1;
 
-    if (isNaN(note)) return sum;
+    if (isNaN(value)) {
+      return sum;
+    }
 
-    return sum + note * coef;
+    return sum + value * coef;
   }, 0);
+
+  if (totalCoef === 0) {
+    return NaN;
+  }
 
   return weightedSum / totalCoef;
 }
@@ -911,22 +917,26 @@ function computeGeneralAverage() {
     e => e.vraie != null
   );
 
-  if (list.length === 0) return NaN;
+  if (list.length === 0) {
+    return NaN;
+  }
 
   let totalPoints = 0;
   let totalCoef = 0;
 
   list.forEach(e => {
-    const note = Number(e.vraie);
+    const value = Number(e.vraie);
     const coef = Number(e.coef ?? e.coefficient) || 1;
 
-    if (!isNaN(note)) {
-      totalPoints += note * coef;
+    if (!isNaN(value)) {
+      totalPoints += value * coef;
       totalCoef += coef;
     }
   });
 
-  if (totalCoef === 0) return NaN;
+  if (totalCoef === 0) {
+    return NaN;
+  }
 
   return totalPoints / totalCoef;
 }
@@ -937,7 +947,9 @@ function computeGeneralAverage() {
 // -----------------------------
 
 function escapeHtml(value) {
-  if (value === null || value === undefined) return '';
+  if (value === null || value === undefined) {
+    return '';
+  }
 
   return String(value)
     .replace(/&/g, '&amp;')
