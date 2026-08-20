@@ -837,19 +837,10 @@ function openEvalModal(evalId=null){
 // -----------------------------
 // Calculs de notes / Moyennes
 // -----------------------------
-function computeSubjectAverage(subjectId) {
-  const list = store.evals.filter(e => e.subjectId == subjectId && e.vraie != null);
-  if (list.length === 0) return NaN;
+function computeSubjectAverage(subjectId) { const list = store.evals.filter(e => e.subjectId == subjectId && e.vraie != null); if (list.length === 0) return NaN;
 
-  // somme des coefficients (1 par défaut si pas de coef)
-  const totalCoef = list.reduce((sum, a) => sum + (Number(a.coef) || 1), 0);
+// somme des coefficients (1 par défaut si pas de coef) const totalCoef = list.reduce((sum, a) => { const coef = Number(a.coef ?? a.coefficient) || 1; return sum + coef; }, 0);
 
-  // somme pondérée des notes
-  const weightedSum = list.reduce((sum, a) => {
-    const value = Number(a.vraie);
-    const coef = Number(a.coef) || 1;
-    return sum + (isNaN(value) ? 0 : value * coef);
-  }, 0);
+// somme pondérée des notes const weightedSum = list.reduce((sum, a) => { const value = Number(a.vraie); const coef = Number(a.coef ?? a.coefficient) || 1; return sum + (isNaN(value) ? 0 : value * coef); }, 0);
 
-  return weightedSum / totalCoef;
-}
+return weightedSum / totalCoef; }
