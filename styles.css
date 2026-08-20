@@ -1,0 +1,127 @@
+:root{
+  --bg: #fff4f8;
+  --card: #ffffff;
+  --pink-1:#ffd9e6;
+  --pink-2:#ffb3cc;
+  --rose:#ff7fbf;
+  --lavender:#e9d9ff;
+  --muted:#f7f0f3;
+  --text:#3b2b2b;
+  --soft-shadow: 0 6px 18px rgba(219,124,167,0.12);
+  --glass: linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(255, 250, 251, 0.8));
+  font-family: 'Poppins', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background: linear-gradient(180deg,var(--bg),#fff);
+  color:var(--text);
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+}
+
+/* Header */
+.header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  padding:18px 20px;
+  position:sticky;
+  top:0;
+  background:rgba(255,250,251,0.85);
+  backdrop-filter: blur(6px);
+  border-bottom:1px solid rgba(255,215,230,0.4);
+  z-index:30;
+}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{
+  width:54px;height:54px;border-radius:14px;
+  background:linear-gradient(135deg,var(--pink-1),var(--pink-2));
+  display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:var(--soft-shadow)
+}
+.brand h1{margin:0;font-size:18px;font-weight:600}
+.subtitle{margin:0;font-size:12px;color:#7a5966}
+
+/* Navigation */
+.main-nav{display:flex;gap:8px}
+.nav-btn{
+  border:0;background:transparent;padding:8px 12px;border-radius:10px;font-weight:600;color:#6b4350;cursor:pointer;
+}
+.nav-btn.active{background:linear-gradient(180deg,var(--pink-2),var(--rose));color:white;box-shadow:var(--soft-shadow)}
+.header-actions{display:flex;gap:8px;align-items:center}
+
+/* Buttons */
+.btn{padding:8px 12px;border-radius:10px;border:0;background:#fff;font-weight:600;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,0.04)}
+.btn.ghost{background:transparent}
+.btn.small{padding:6px 8px;font-size:13px;border-radius:8px}
+.btn.rose{background:var(--rose);color:white}
+.btn.icon{background:transparent;padding:6px 10px;border-radius:8px}
+
+/* Layout */
+.main{padding:20px;max-width:1200px;margin:0 auto}
+.card{background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--soft-shadow);margin-bottom:16px}
+.card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+
+/* Dashboard */
+.dashboard{display:grid;grid-template-columns:1fr 320px;gap:16px;margin-bottom:16px}
+@media (max-width:900px){.dashboard{grid-template-columns:1fr}}
+
+/* Calendar styles */
+.cal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.week-label{font-weight:600;font-size:15px}
+.week-calendar{
+  display:grid;
+  grid-template-columns: 60px repeat(7,1fr);
+  gap:6px;
+  align-items:start;
+  min-height:420px;
+  border-radius:12px;
+  overflow:hidden;
+}
+.time-col{background:transparent;padding:8px;color:#7a6b6f;font-size:13px}
+.day-col{padding:8px;background:linear-gradient(180deg,rgba(255,255,255,0.95),rgba(255,250,251,0.95));border-radius:10px;min-height:420px}
+.day-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-weight:600}
+.slot{border-radius:8px;padding:6px;margin-bottom:6px;font-size:13px;cursor:pointer;color:#2b1721}
+.slot.small{font-size:12px;padding:4px}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;color:white;font-weight:700}
+
+/* Tasks / lists */
+.list{display:flex;flex-direction:column;gap:8px}
+.list-item{
+  display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:10px;background:var(--muted)
+}
+.list-item .meta{font-size:12px;color:#6b4956}
+
+/* Planner grid */
+.planner-grid{display:grid;grid-template-columns:1fr 420px;gap:16px}
+@media (max-width:1000px){.planner-grid{grid-template-columns:1fr}}
+
+/* Notes grid */
+.notes-grid{display:grid;grid-template-columns:1fr 420px;gap:16px}
+@media (max-width:1000px){.notes-grid{grid-template-columns:1fr}}
+
+/* Modal */
+.modal{
+  position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:18px;
+  background:rgba(11,4,8,0.28);z-index:60;
+}
+.modal .card{width:100%;max-width:720px}
+
+/* Footer */
+.footer{padding:18px;text-align:center;font-size:12px;color:#714e58}
+
+/* Utilities */
+.hidden{display:none}
+.select{padding:8px;border-radius:8px;border:1px solid #f0d9e3;background:white}
+.input, textarea{width:100%;padding:10px;border-radius:8px;border:1px solid #f1dbe4;background:#fff}
+.text-muted{color:#7e5c66;font-size:13px}
+.center{display:flex;align-items:center;justify-content:center}
+
+/* small screens calendar stack */
+@media (max-width:700px){
+  .week-calendar{grid-template-columns: 40px repeat(7, minmax(120px, 1fr));overflow:auto}
+  .brand h1{font-size:16px}
+  .logo{width:44px;height:44px}
+}
