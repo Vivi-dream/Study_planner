@@ -878,10 +878,71 @@ function openEvalModal(evalId=null){
 // -----------------------------
 // Calculs de notes / Moyennes
 // -----------------------------
-function computeSubjectAverage(subjectId) { const list = store.evals.filter(e => e.subjectId == subjectId && e.vraie != null); if (list.length === 0) return NaN;
 
-// somme des coefficients (1 par défaut si pas de coef) const totalCoef = list.reduce((sum, a) => { const coef = Number(a.coef ?? a.coefficient) || 1; return sum + coef; }, 0);
+function computeSubjectAverage(subjectId) {
+  const list = store.evals.filter(
+    e => e.subjectId == subjectId && e.vraie != null
+  );
 
-// somme pondérée des notes const weightedSum = list.reduce((sum, a) => { const value = Number(a.vraie); const coef = Number(a.coef ?? a.coefficient) || 1; return sum + (isNaN(value) ? 0 : value * coef); }, 0);
+  if (list.length === 0) return NaN;
 
-return weightedSum / totalCoef; }
+  // Somme des coefficients
+  const totalCoef = list.reduce((sum, e) => {
+    const coef = Number(e.coef ?? e.coefficient) || 1;
+    return sum + coef;
+  }, 0);
+
+  // Somme pondérée des notes
+  const weightedSum = list.reduce((sum, e) => {
+    const note = Number(e.vraie);
+    const coef = Number(e.coef ?? e.coefficient) || 1;
+
+    if (isNaN(note)) return sum;
+
+    return sum + note * coef;
+  }, 0);
+
+  return weightedSum / totalCoef;
+}
+
+
+function computeGeneralAverage() {
+  const list = store.evals.filter(
+    e => e.vraie != null
+  );
+
+  if (list.length === 0) return NaN;
+
+  let totalPoints = 0;
+  let totalCoef = 0;
+
+  list.forEach(e => {
+    const note = Number(e.vraie);
+    const coef = Number(e.coef ?? e.coefficient) || 1;
+
+    if (!isNaN(note)) {
+      totalPoints += note * coef;
+      totalCoef += coef;
+    }
+  });
+
+  if (totalCoef === 0) return NaN;
+
+  return totalPoints / totalCoef;
+}
+
+
+// -----------------------------
+// Sécurité HTML
+// -----------------------------
+
+function escapeHtml(value) {
+  if (value === null || value === undefined) return '';
+
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
