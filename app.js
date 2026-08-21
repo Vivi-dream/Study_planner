@@ -1,10 +1,9 @@
 /* =========================================================
-   STUDY PLANNER - app.js
+   STUDY PLANNER
    Interface française
-   Persistance : localStorage
-   Méthode de révision : 2,3,5,7
    ========================================================= */
 
+const STORAGE_KEY = 'studyPlannerData_v1';
 
 /* =========================================================
    UTILITAIRES
@@ -13,35 +12,34 @@
 const uid = (prefix = 'id') =>
   `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 
-const today = () => {
+function today() {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
   return d;
-};
+}
 
-const formatDate = (d) => {
-  const dt = new Date(d);
-  if (isNaN(dt.getTime())) return '';
-  return dt.toISOString().slice(0, 10);
-};
+function formatDate(date) {
+  const d = new Date(date);
+  return d.toISOString().slice(0, 10);
+}
 
-const formatDateReadable = (d) => {
-  const dt = new Date(d);
+function formatDateReadable(date) {
+  if (!date) return '';
 
-  if (isNaN(dt.getTime())) return '';
+  const d = new Date(date + 'T00:00:00');
 
-  return dt.toLocaleDateString('fr-FR', {
+  return d.toLocaleDateString('fr-FR', {
     weekday: 'short',
     day: '2-digit',
     month: 'short'
   });
-};
+}
 
-const addDays = (d, n) => {
-  const t = new Date(d);
-  t.setDate(t.getDate() + n);
-  return t;
-};
+function addDays(date, number) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + number);
+  return d;
+}
 
 function escapeHtml(value) {
   if (value === null || value === undefined) return '';
@@ -54,12 +52,9 @@ function escapeHtml(value) {
     .replace(/'/g, '&#039;');
 }
 
-
 /* =========================================================
-   DONNÉES
+   MATIÈRES PAR DÉFAUT
    ========================================================= */
-
-const STORAGE_KEY = 'studyPlannerData_v1';
 
 const defaultSubjects = [
   {
@@ -84,6 +79,10 @@ const defaultSubjects = [
   }
 ];
 
+/* =========================================================
+   DONNÉES
+   ========================================================= */
+
 let store = {
   subjects: [],
   classes: [],
@@ -99,25 +98,49 @@ let store = {
   }
 };
 
-
 /* =========================================================
    CHARGEMENT / SAUVEGARDE
    ========================================================= */
 
-function createDefaultStore() {
-  return {
-    subjects: defaultSubjects.map(s => ({ ...s })),
-    classes: [],
-    events: [],
-    tasks: [],
-    lessons: [],
-    revisions: [],
-    photos: [],
-    notes: [],
-    evals: [],
-    settings: {
-      weekStart: 'monday'
-    }
+function normalizeStore() {
+  store.subjects = Array.isArray(store.subjects)
+    ? store.subjects
+    : defaultSubjects.slice();
+
+  store.classes = Array.isArray(store.classes)
+    ? store.classes
+    : [];
+
+  store.events = Array.isArray(store.events)
+    ? store.events
+    : [];
+
+  store.tasks = Array.isArray(store.tasks)
+    ? store.tasks
+    : [];
+
+  store.lessons = Array.isArray(store.lessons)
+    ? store.lessons
+    : [];
+
+  store.revisions = Array.isArray(store.revisions)
+    ? store.revisions
+    : [];
+
+  store.photos = Array.isArray(store.photos)
+    ? store.photos
+    : [];
+
+  store.notes = Array.isArray(store.notes)
+    ? store.notes
+    : [];
+
+  store.evals = Array.isArray(store.evals)
+    ? store.evals
+    : [];
+
+  store.settings = store.settings || {
+    weekStart: 'monday'
   };
 }
 
@@ -125,80 +148,50 @@ function loadStore() {
   const raw = localStorage.getItem(STORAGE_KEY);
 
   if (!raw) {
-    store = createDefaultStore();
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(store)
-    );
-    return;
-  }
-
-  try {
-    const parsed = JSON.parse(raw);
-
     store = {
-      subjects: Array.isArray(parsed.subjects)
-        ? parsed.subjects
-        : defaultSubjects.map(s => ({ ...s })),
-
-      classes: Array.isArray(parsed.classes)
-        ? parsed.classes
-        : [],
-
-      events: Array.isArray(parsed.events)
-        ? parsed.events
-        : [],
-
-      tasks: Array.isArray(parsed.tasks)
-        ? parsed.tasks
-        : [],
-
-      lessons: Array.isArray(parsed.lessons)
-        ? parsed.lessons
-        : [],
-
-      revisions: Array.isArray(parsed.revisions)
-        ? parsed.revisions
-        : [],
-
-      photos: Array.isArray(parsed.photos)
-        ? parsed.photos
-        : [],
-
-      notes: Array.isArray(parsed.notes)
-        ? parsed.notes
-        : [],
-
-      evals: Array.isArray(parsed.evals)
-        ? parsed.evals
-        : [],
-
-      settings: parsed.settings || {
+      subjects: defaultSubjects.slice(),
+      classes: [],
+      events: [],
+      tasks: [],
+      lessons: [],
+      revisions: [],
+      photos: [],
+      notes: [],
+      evals: [],
+      settings: {
         weekStart: 'monday'
       }
     };
 
-  } catch (error) {
-    console.error(
-      'Erreur lors du chargement des données :',
-      error
-    );
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+    return;
+  }
 
-    store = createDefaultStore();
+  try {
+    store = JSON.parse(raw);
+    normalizeStore();
+  } catch (error) {
+    console.error('Erreur de chargement des données :', error);
+
+    store = {
+      subjects: defaultSubjects.slice(),
+      classes: [],
+      events: [],
+      tasks: [],
+      lessons: [],
+      revisions: [],
+      photos: [],
+      notes: [],
+      evals: [],
+      settings: {
+        weekStart: 'monday'
+      }
+    };
   }
 }
 
 function saveStore() {
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(store)
-  );
-
-  renderAll();
-}
-
-function resetStore() {
-  store = createDefaultStore();
+  normalizeStore();
 
   localStorage.setItem(
     STORAGE_KEY,
@@ -207,14 +200,12 @@ function resetStore() {
 
   renderAll();
 }
-
 
 /* =========================================================
    INITIALISATION
    ========================================================= */
 
 document.addEventListener('DOMContentLoaded', () => {
-
   loadStore();
 
   initNav();
@@ -223,13 +214,11 @@ document.addEventListener('DOMContentLoaded', () => {
   renderAll();
 });
 
-
 /* =========================================================
    NAVIGATION
    ========================================================= */
 
 function initNav() {
-
   const navButtons =
     document.querySelectorAll('.nav-btn');
 
@@ -239,11 +228,11 @@ function initNav() {
   const dashboard =
     document.getElementById('dashboard');
 
-  navButtons.forEach(btn => {
+  navButtons.forEach(button => {
 
-    btn.addEventListener('click', () => {
+    button.addEventListener('click', () => {
 
-      const tabId = btn.dataset.tab;
+      const tabId = button.dataset.tab;
 
       const target =
         document.getElementById(tabId);
@@ -256,11 +245,11 @@ function initNav() {
         return;
       }
 
-      navButtons.forEach(b =>
-        b.classList.remove('active')
+      navButtons.forEach(btn =>
+        btn.classList.remove('active')
       );
 
-      btn.classList.add('active');
+      button.classList.add('active');
 
       tabs.forEach(tab =>
         tab.classList.add('hidden')
@@ -275,64 +264,46 @@ function initNav() {
             : 'none';
       }
     });
-
   });
 
-
-  /* =========================
-     EXPORT
-     ========================= */
+  /* EXPORT */
 
   const exportBtn =
     document.getElementById('exportBtn');
 
   if (exportBtn) {
 
-    exportBtn.addEventListener(
-      'click',
-      () => {
+    exportBtn.addEventListener('click', () => {
 
-        const data =
-          JSON.stringify(
-            store,
-            null,
-            2
-          );
+      const data =
+        JSON.stringify(store, null, 2);
 
-        const blob =
-          new Blob(
-            [data],
-            {
-              type: 'application/json'
-            }
-          );
+      const blob =
+        new Blob([data], {
+          type: 'application/json'
+        });
 
-        const url =
-          URL.createObjectURL(blob);
+      const url =
+        URL.createObjectURL(blob);
 
-        const a =
-          document.createElement('a');
+      const link =
+        document.createElement('a');
 
-        a.href = url;
+      link.href = url;
+      link.download =
+        'study-planner-export.json';
 
-        a.download =
-          'study-planner-export.json';
+      document.body.appendChild(link);
 
-        document.body.appendChild(a);
+      link.click();
 
-        a.click();
+      link.remove();
 
-        a.remove();
-
-        URL.revokeObjectURL(url);
-      }
-    );
+      URL.revokeObjectURL(url);
+    });
   }
 
-
-  /* =========================
-     IMPORT
-     ========================= */
+  /* IMPORT */
 
   const importInput =
     document.getElementById('importFile');
@@ -341,53 +312,48 @@ function initNav() {
 
     importInput.addEventListener(
       'change',
-      (e) => {
+      event => {
 
         const file =
-          e.target.files[0];
+          event.target.files[0];
 
         if (!file) return;
 
         const reader =
           new FileReader();
 
-        reader.onload =
-          (event) => {
+        reader.onload = e => {
 
-            try {
+          try {
 
-              const data =
-                JSON.parse(
-                  event.target.result
-                );
+            const imported =
+              JSON.parse(e.target.result);
 
-              store = {
-                ...createDefaultStore(),
-                ...data
-              };
+            store = imported;
 
-              saveStore();
+            normalizeStore();
 
-              alert(
-                'Importation réussie !'
-              );
+            saveStore();
 
-            } catch (error) {
+            alert(
+              'Importation réussie !'
+            );
 
-              console.error(error);
+          } catch (error) {
 
-              alert(
-                'Fichier JSON invalide.'
-              );
-            }
-          };
+            console.error(error);
+
+            alert(
+              'Le fichier JSON est invalide.'
+            );
+          }
+        };
 
         reader.readAsText(file);
       }
     );
   }
 }
-
 
 /* =========================================================
    BOUTONS
@@ -405,7 +371,6 @@ function initButtons() {
     );
   }
 
-
   const addLessonBtn =
     document.getElementById('addLessonBtn');
 
@@ -415,7 +380,6 @@ function initButtons() {
       () => openLessonModal()
     );
   }
-
 
   const addEvalBtn =
     document.getElementById('addEvalBtn');
@@ -427,7 +391,6 @@ function initButtons() {
     );
   }
 
-
   const addEventBtn =
     document.getElementById('addEventFromCal');
 
@@ -438,43 +401,58 @@ function initButtons() {
     );
   }
 
+  /* MATIÈRES */
 
-  const prevWeek =
+  const manageSubjectsBtn =
+    document.getElementById(
+      'manageSubjectsBtn'
+    );
+
+  if (manageSubjectsBtn) {
+
+    manageSubjectsBtn.addEventListener(
+      'click',
+      () => openSubjectsModal()
+    );
+  }
+
+  /* CALENDRIER */
+
+  const previous =
     document.getElementById('prevWeek');
 
-  if (prevWeek) {
-    prevWeek.addEventListener(
+  if (previous) {
+    previous.addEventListener(
       'click',
       () => changeWeek(-7)
     );
   }
 
-
-  const nextWeek =
+  const next =
     document.getElementById('nextWeek');
 
-  if (nextWeek) {
-    nextWeek.addEventListener(
+  if (next) {
+    next.addEventListener(
       'click',
       () => changeWeek(7)
     );
   }
 
+  const filter =
+    document.getElementById(
+      'subjectFilter'
+    );
 
-  const subjectFilter =
-    document.getElementById('subjectFilter');
-
-  if (subjectFilter) {
-    subjectFilter.addEventListener(
+  if (filter) {
+    filter.addEventListener(
       'change',
       () => renderCalendar()
     );
   }
 }
 
-
 /* =========================================================
-   RENDER GLOBAL
+   RENDU GLOBAL
    ========================================================= */
 
 function renderAll() {
@@ -494,9 +472,8 @@ function renderAll() {
   renderGradesChart();
 }
 
-
 /* =========================================================
-   MATIÈRES
+   FILTRE MATIÈRES
    ========================================================= */
 
 function populateSubjectFilter() {
@@ -508,24 +485,485 @@ function populateSubjectFilter() {
 
   if (!select) return;
 
-  select.innerHTML =
-    '<option value="all">Toutes les matières</option>';
+  const currentValue =
+    select.value || 'all';
+
+  select.innerHTML = '';
+
+  const allOption =
+    document.createElement('option');
+
+  allOption.value = 'all';
+  allOption.textContent =
+    'Toutes les matières';
+
+  select.appendChild(allOption);
 
   store.subjects.forEach(subject => {
 
     const option =
       document.createElement('option');
 
-    option.value =
-      subject.id;
-
+    option.value = subject.id;
     option.textContent =
       subject.name;
 
     select.appendChild(option);
   });
+
+  if (
+    [...select.options]
+      .some(o => o.value === currentValue)
+  ) {
+    select.value = currentValue;
+  }
 }
 
+/* =========================================================
+   GESTION DES MATIÈRES
+   ========================================================= */
+
+function openSubjectsModal() {
+
+  const subjectsHtml =
+    store.subjects.length
+      ? store.subjects.map(subject => `
+        <div
+          class="list-item"
+          style="
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:12px;
+          "
+        >
+
+          <div
+            style="
+              display:flex;
+              align-items:center;
+              gap:10px;
+            "
+          >
+
+            <div
+              style="
+                width:18px;
+                height:18px;
+                border-radius:50%;
+                background:${escapeHtml(subject.color)};
+                border:1px solid rgba(0,0,0,.1);
+              "
+            ></div>
+
+            <strong>
+              ${escapeHtml(subject.name)}
+            </strong>
+
+          </div>
+
+          <div
+            style="
+              display:flex;
+              gap:6px;
+            "
+          >
+
+            <button
+              class="btn small"
+              data-subject-edit="${subject.id}"
+            >
+              Modifier
+            </button>
+
+            <button
+              class="btn small btn-ghost"
+              data-subject-delete="${subject.id}"
+            >
+              Supprimer
+            </button>
+
+          </div>
+
+        </div>
+      `).join('')
+      : `
+        <div class="text-muted">
+          Aucune matière.
+        </div>
+      `;
+
+  const html = `
+
+    <h3>📚 Mes matières</h3>
+
+    <p class="text-muted">
+      Ajoute, modifie ou supprime tes matières.
+      Chaque matière possède sa propre couleur.
+    </p>
+
+    <div
+      id="subjectsManagerList"
+      style="
+        display:grid;
+        gap:8px;
+        margin:15px 0;
+      "
+    >
+      ${subjectsHtml}
+    </div>
+
+    <hr style="border:none;border-top:1px solid #eee">
+
+    <h4>➕ Ajouter une matière</h4>
+
+    <div
+      style="
+        display:grid;
+        gap:8px;
+      "
+    >
+
+      <label>
+        Nom de la matière
+        <input
+          id="newSubjectName"
+          class="input"
+          placeholder="Ex : Physique-Chimie"
+        >
+      </label>
+
+      <label>
+        Couleur
+        <input
+          id="newSubjectColor"
+          type="color"
+          value="#ffd0e0"
+          style="
+            width:70px;
+            height:40px;
+            border:none;
+            background:none;
+          "
+        >
+      </label>
+
+      <div
+        style="
+          display:flex;
+          justify-content:flex-end;
+          gap:8px;
+        "
+      >
+
+        <button
+          id="closeSubjects"
+          class="btn small btn-ghost"
+        >
+          Fermer
+        </button>
+
+        <button
+          id="createSubject"
+          class="btn rose small"
+        >
+          Ajouter
+        </button>
+
+      </div>
+
+    </div>
+  `;
+
+  openModal(html);
+
+  document
+    .getElementById('closeSubjects')
+    .addEventListener(
+      'click',
+      closeModal
+    );
+
+  document
+    .getElementById('createSubject')
+    .addEventListener(
+      'click',
+      () => {
+
+        const name =
+          document
+            .getElementById(
+              'newSubjectName'
+            )
+            .value
+            .trim();
+
+        const color =
+          document
+            .getElementById(
+              'newSubjectColor'
+            )
+            .value;
+
+        if (!name) {
+
+          alert(
+            'Entre le nom de la matière.'
+          );
+
+          return;
+        }
+
+        const alreadyExists =
+          store.subjects.some(
+            subject =>
+              subject.name
+                .toLowerCase() ===
+              name.toLowerCase()
+          );
+
+        if (alreadyExists) {
+
+          alert(
+            'Cette matière existe déjà.'
+          );
+
+          return;
+        }
+
+        store.subjects.push({
+          id: uid('matiere'),
+          name,
+          color
+        });
+
+        saveStore();
+
+        closeModal();
+
+        openSubjectsModal();
+      }
+    );
+
+  /* MODIFIER */
+
+  document
+    .querySelectorAll(
+      '[data-subject-edit]'
+    )
+    .forEach(button => {
+
+      button.addEventListener(
+        'click',
+        () => {
+
+          const id =
+            button.dataset.subjectEdit;
+
+          closeModal();
+
+          openEditSubjectModal(id);
+        }
+      );
+    });
+
+  /* SUPPRIMER */
+
+  document
+    .querySelectorAll(
+      '[data-subject-delete]'
+    )
+    .forEach(button => {
+
+      button.addEventListener(
+        'click',
+        () => {
+
+          const id =
+            button.dataset.subjectDelete;
+
+          deleteSubject(id);
+        }
+      );
+    });
+}
+
+function openEditSubjectModal(id) {
+
+  const subject =
+    store.subjects.find(
+      s => s.id === id
+    );
+
+  if (!subject) return;
+
+  const html = `
+
+    <h3>✏️ Modifier la matière</h3>
+
+    <div
+      style="
+        display:grid;
+        gap:10px;
+      "
+    >
+
+      <label>
+        Nom
+        <input
+          id="editSubjectName"
+          class="input"
+          value="${escapeHtml(subject.name)}"
+        >
+      </label>
+
+      <label>
+        Couleur
+        <input
+          id="editSubjectColor"
+          type="color"
+          value="${escapeHtml(subject.color)}"
+          style="
+            width:70px;
+            height:40px;
+            border:none;
+            background:none;
+          "
+        >
+      </label>
+
+      <div
+        style="
+          display:flex;
+          justify-content:flex-end;
+          gap:8px;
+        "
+      >
+
+        <button
+          id="cancelSubjectEdit"
+          class="btn small btn-ghost"
+        >
+          Annuler
+        </button>
+
+        <button
+          id="saveSubjectEdit"
+          class="btn rose small"
+        >
+          Enregistrer
+        </button>
+
+      </div>
+
+    </div>
+  `;
+
+  openModal(html);
+
+  document
+    .getElementById(
+      'cancelSubjectEdit'
+    )
+    .addEventListener(
+      'click',
+      () => {
+
+        closeModal();
+        openSubjectsModal();
+
+      }
+    );
+
+  document
+    .getElementById(
+      'saveSubjectEdit'
+    )
+    .addEventListener(
+      'click',
+      () => {
+
+        const name =
+          document
+            .getElementById(
+              'editSubjectName'
+            )
+            .value
+            .trim();
+
+        const color =
+          document
+            .getElementById(
+              'editSubjectColor'
+            )
+            .value;
+
+        if (!name) {
+
+          alert(
+            'Le nom ne peut pas être vide.'
+          );
+
+          return;
+        }
+
+        subject.name = name;
+        subject.color = color;
+
+        saveStore();
+
+        closeModal();
+
+        openSubjectsModal();
+      }
+    );
+}
+
+function deleteSubject(id) {
+
+  const subject =
+    store.subjects.find(
+      s => s.id === id
+    );
+
+  if (!subject) return;
+
+  const used =
+    store.tasks.some(
+      t => t.subjectId === id
+    ) ||
+    store.lessons.some(
+      l => l.subjectId === id
+    ) ||
+    store.evals.some(
+      e => e.subjectId === id
+    ) ||
+    store.events.some(
+      e => e.subjectId === id
+    );
+
+  let message =
+    `Supprimer la matière "${subject.name}" ?`;
+
+  if (used) {
+
+    message +=
+      '\n\nAttention : cette matière est utilisée par des éléments de ton planner. Ils conserveront leur référence mais la matière ne sera plus disponible dans la liste.';
+  }
+
+  if (!confirm(message)) return;
+
+  store.subjects =
+    store.subjects.filter(
+      s => s.id !== id
+    );
+
+  saveStore();
+
+  closeModal();
+
+  openSubjectsModal();
+}
 
 /* =========================================================
    CALENDRIER
@@ -536,32 +974,24 @@ let currentWeekStart =
 
 function startOfWeek(date) {
 
-  const d =
-    new Date(date);
+  const d = new Date(date);
 
-  const day =
-    d.getDay();
+  const day = d.getDay();
 
   const diff =
     day === 0
       ? -6
       : 1 - day;
 
-  const monday =
-    new Date(d);
-
-  monday.setDate(
+  d.setDate(
     d.getDate() + diff
   );
 
-  monday.setHours(
-    0,
-    0,
-    0,
-    0
+  d.setHours(
+    0, 0, 0, 0
   );
 
-  return monday;
+  return d;
 }
 
 function changeWeek(days) {
@@ -600,14 +1030,9 @@ function weekLabel() {
   )}`;
 }
 
-
-/* =========================================================
-   RENDU DU CALENDRIER
-   ========================================================= */
-
 function renderCalendar() {
 
-  const weekLabelEl =
+  const label =
     document.getElementById(
       'weekLabel'
     );
@@ -617,58 +1042,41 @@ function renderCalendar() {
       'weekCalendar'
     );
 
-  if (!container) return;
+  if (!label || !container)
+    return;
 
-  if (weekLabelEl) {
-    weekLabelEl.textContent =
-      weekLabel();
-  }
+  label.textContent =
+    weekLabel();
 
   container.innerHTML = '';
 
-
-  /* =========================
-     COLONNE DES HEURES
-     ========================= */
-
-  const timesCol =
+  const timesColumn =
     document.createElement('div');
 
-  timesCol.className =
+  timesColumn.className =
     'time-col';
 
-  const slotHours =
-    Array.from(
-      { length: 14 },
+  const hours =
+    [...Array(14)].map(
       (_, i) => 7 + i
     );
 
-  timesCol.innerHTML =
-    slotHours
-      .map(hour =>
-        `<div class="time">${hour}h</div>`
+  timesColumn.innerHTML =
+    hours
+      .map(
+        h =>
+          `<div class="time">${h}h</div>`
       )
       .join('');
 
   container.appendChild(
-    timesCol
+    timesColumn
   );
 
-
-  const filterEl =
+  const filter =
     document.getElementById(
       'subjectFilter'
-    );
-
-  const filter =
-    filterEl
-      ? filterEl.value
-      : 'all';
-
-
-  /* =========================
-     7 JOURS
-     ========================= */
+    )?.value || 'all';
 
   for (
     let dayIndex = 0;
@@ -682,31 +1090,28 @@ function renderCalendar() {
         dayIndex
       );
 
-    const dayDate =
-      formatDate(day);
+    const dayColumn =
+      document.createElement(
+        'div'
+      );
 
-    const dayCol =
-      document.createElement('div');
-
-    dayCol.className =
+    dayColumn.className =
       'day-col';
 
-    dayCol.dataset.date =
-      dayDate;
-
-
-    /* HEADER */
+    dayColumn.dataset.date =
+      formatDate(day);
 
     const header =
-      document.createElement('div');
+      document.createElement(
+        'div'
+      );
 
     header.className =
       'day-header';
 
     const isToday =
-      dayDate === formatDate(
-        new Date()
-      );
+      formatDate(day) ===
+      formatDate(new Date());
 
     header.innerHTML = `
       <div>
@@ -725,118 +1130,78 @@ function renderCalendar() {
       </div>
     `;
 
-    dayCol.appendChild(
+    dayColumn.appendChild(
       header
     );
 
-
-    /* =========================
-       COURS RÉCURRENTS
-       ========================= */
-
-    const classEvents =
-      store.classes
-        .filter(
-          c =>
-            Number(c.jour) ===
-            day.getDay()
-        )
-        .map(c => ({
-
-          id: c.id,
-
-          title:
-            c.matiereName ||
-            getSubjectName(
-              c.subjectId
-            ),
-
-          subjectId:
-            c.subjectId,
-
-          type:
-            'Cours',
-
-          date:
-            dayDate,
-
-          startTime:
-            c.start || '',
-
-          endTime:
-            c.end || '',
-
-          priority:
-            null,
-
-          status:
-            'scheduled',
-
-          linkedId:
-            c.id,
-
-          isClass:
-            true
-        }));
-
-
-    /* =========================
-       ÉVÉNEMENTS
-       ========================= */
+    const dateString =
+      formatDate(day);
 
     const dayEvents =
       store.events.filter(
         event =>
           event.date ===
-          dayDate
+          dateString
       );
 
-
-    /* =========================
-       RÉVISIONS
-       ========================= */
+    const recurringClasses =
+      store.classes
+        .filter(
+          item =>
+            item.jour ===
+            day.getDay()
+        )
+        .map(item => ({
+          id: item.id,
+          title:
+            item.matiereName ||
+            getSubjectName(
+              item.subjectId
+            ),
+          subjectId:
+            item.subjectId,
+          type: 'Cours',
+          date: dateString,
+          startTime: item.start,
+          endTime: item.end,
+          status: 'scheduled',
+          isClass: true
+        }));
 
     const revisions =
       store.revisions
         .filter(
           revision =>
             revision.date ===
-            dayDate
+            dateString
         )
         .map(revision => ({
-
           ...revision,
-
-          type:
-            'Révision'
+          type: 'Révision'
         }));
 
-
-    const allEvents = [
-      ...classEvents,
+    let allEvents = [
+      ...recurringClasses,
       ...dayEvents,
       ...revisions
     ];
 
+    if (filter !== 'all') {
 
-    const shown =
-      filter === 'all'
-        ? allEvents
-        : allEvents.filter(
-            event =>
-              event.subjectId ===
-              filter
-          );
+      allEvents =
+        allEvents.filter(
+          event =>
+            event.subjectId ===
+            filter
+        );
+    }
 
-
-    /* =========================
-       AFFICHAGE
-       ========================= */
-
-    shown.forEach(event => {
+    allEvents.forEach(event => {
 
       const slot =
-        document.createElement('div');
+        document.createElement(
+          'div'
+        );
 
       slot.className =
         'slot small';
@@ -848,28 +1213,20 @@ function renderCalendar() {
             event.subjectId
         );
 
-      const background =
-        subject
-          ? subject.color
-          : '#ffe6f3';
-
       slot.style.background =
-        background;
-
-
-      const statusText =
-        event.status === 'done'
-          ? ' • Terminé'
-          : '';
-
+        subject?.color ||
+        '#ffe6f3';
 
       slot.innerHTML = `
-        <div style="
-          display:flex;
-          justify-content:space-between;
-          align-items:center;
-          gap:6px;
-        ">
+
+        <div
+          style="
+            display:flex;
+            justify-content:space-between;
+            gap:5px;
+            align-items:center;
+          "
+        >
 
           <strong>
             ${escapeHtml(
@@ -881,12 +1238,11 @@ function renderCalendar() {
           <span
             class="badge"
             style="
-              background:rgba(0,0,0,0.08);
+              background:rgba(0,0,0,.08);
               color:#6b4956;
-              font-weight:700;
               padding:4px 8px;
               border-radius:999px;
-              font-size:12px;
+              font-size:11px;
             "
           >
             ${escapeHtml(
@@ -900,25 +1256,17 @@ function renderCalendar() {
         <div class="meta">
           ${
             event.startTime
-              ? escapeHtml(
-                  event.startTime
-                )
+              ? event.startTime
               : ''
           }
 
           ${
-            event.priority
-              ? ' • Priorité : ' +
-                escapeHtml(
-                  event.priority
-                )
+            event.status === 'done'
+              ? ' • Terminé'
               : ''
           }
-
-          ${statusText}
         </div>
       `;
-
 
       slot.addEventListener(
         'click',
@@ -928,21 +1276,16 @@ function renderCalendar() {
           )
       );
 
-
-      dayCol.appendChild(
+      dayColumn.appendChild(
         slot
       );
     });
 
-
     container.appendChild(
-      dayCol
+      dayColumn
     );
   }
-
-  renderDashboardMini();
 }
-
 
 /* =========================================================
    DASHBOARD
@@ -959,18 +1302,18 @@ function renderDashboard() {
 
   dashboard.innerHTML = '';
 
-
-  /* =========================
-     CARTE GAUCHE
-     ========================= */
+  const todayString =
+    formatDate(today());
 
   const left =
-    document.createElement('div');
+    document.createElement(
+      'div'
+    );
 
-  left.className =
-    'card';
+  left.className = 'card';
 
   left.innerHTML = `
+
     <h2>Aperçu</h2>
 
     <div class="text-muted">
@@ -1000,24 +1343,18 @@ function renderDashboard() {
     left
   );
 
-
-  /* =========================
-     CARTE DROITE
-     ========================= */
-
   const right =
-    document.createElement('div');
+    document.createElement(
+      'div'
+    );
 
-  right.className =
-    'card';
+  right.className = 'card';
 
-  const remainingTasks =
-    store.tasks.filter(
-      task =>
-        task.status !== 'done'
-    ).length;
+  const average =
+    computeGeneralAverage();
 
   right.innerHTML = `
+
     <h3>Récapitulatif</h3>
 
     <div
@@ -1030,7 +1367,13 @@ function renderDashboard() {
 
       <div style="flex:1">
         <strong>
-          ${remainingTasks}
+          ${
+            store.tasks.filter(
+              task =>
+                task.status !==
+                'done'
+            ).length
+          }
         </strong>
 
         <div class="text-muted">
@@ -1069,7 +1412,13 @@ function renderDashboard() {
       <div
         id="avgGeneral"
         class="text-muted"
-      ></div>
+      >
+        ${
+          Number.isNaN(average)
+            ? 'Aucune note'
+            : average.toFixed(2)
+        }
+      </div>
 
     </div>
   `;
@@ -1078,136 +1427,92 @@ function renderDashboard() {
     right
   );
 
-
-  /* =========================
-     COURS DU JOUR
-     ========================= */
-
   const todayClasses =
     store.classes.filter(
-      c =>
-        Number(c.jour) ===
+      item =>
+        item.jour ===
         new Date().getDay()
     );
 
-  const todayClassesEl =
+  const classesContainer =
     left.querySelector(
       '#todayClasses'
     );
 
-  if (todayClassesEl) {
+  classesContainer.innerHTML =
+    todayClasses.length
+      ? todayClasses.map(
+          item => {
 
-    todayClassesEl.innerHTML =
-      todayClasses.length
+            const subject =
+              store.subjects.find(
+                s =>
+                  s.id ===
+                  item.subjectId
+              );
 
-        ? todayClasses
-            .map(c => {
+            return `
+              <div
+                style="
+                  display:flex;
+                  justify-content:space-between;
+                  padding:8px;
+                  margin-top:6px;
+                  border-radius:10px;
+                  background:rgba(255,255,255,.7);
+                "
+              >
 
-              const subject =
-                store.subjects.find(
-                  s =>
-                    s.id ===
-                    c.subjectId
-                );
+                <div>
 
-              return `
-                <div
-                  style="
-                    display:flex;
-                    justify-content:space-between;
-                    align-items:center;
-                    padding:8px;
-                    border-radius:10px;
-                    background:
-                      linear-gradient(
-                        180deg,
-                        rgba(
-                          255,
-                          255,
-                          255,
-                          0.6
-                        ),
-                        rgba(
-                          255,
-                          250,
-                          251,
-                          0.6
-                        )
-                      );
-                  "
-                >
+                  <strong>
+                    ${
+                      subject
+                        ? escapeHtml(
+                            subject.name
+                          )
+                        : escapeHtml(
+                            item.matiereName ||
+                            'Cours'
+                          )
+                    }
+                  </strong>
 
-                  <div>
-
-                    <strong>
-                      ${
-                        subject
-                          ? escapeHtml(
-                              subject.name
-                            )
-                          : escapeHtml(
-                              c.matiereName ||
-                              'Cours'
-                            )
-                      }
-                    </strong>
-
-                    <div class="text-muted">
-                      ${escapeHtml(
-                        c.start || ''
-                      )}
-                      -
-                      ${escapeHtml(
-                        c.end || ''
-                      )}
-                    </div>
-
+                  <div class="text-muted">
+                    ${item.start || ''} -
+                    ${item.end || ''}
                   </div>
 
-                  <div
-                    style="
-                      width:12px;
-                      height:12px;
-                      border-radius:4px;
-                      background:
-                        ${
-                          subject
-                            ? subject.color
-                            : '#ffd0e0'
-                        };
-                    "
-                  ></div>
-
                 </div>
-              `;
-            })
-            .join('')
 
-        : `
-          <div class="text-muted">
-            Aucun cours aujourd'hui
-          </div>
-        `;
-  }
+                <div
+                  style="
+                    width:12px;
+                    height:12px;
+                    border-radius:4px;
+                    background:${
+                      subject?.color ||
+                      '#ffd0e0'
+                    };
+                  "
+                ></div>
 
-
-  /* =========================
-     ÉCHÉANCES
-     ========================= */
-
-  const upcomingEl =
-    left.querySelector(
-      '#upcomingDeadlines'
-    );
+              </div>
+            `;
+          }
+        ).join('')
+      : `
+        <div class="text-muted">
+          Aucun cours aujourd'hui.
+        </div>
+      `;
 
   const upcoming =
     store.tasks
       .filter(
         task =>
           task.status !== 'done' &&
-          task.date &&
-          new Date(task.date) >=
-            today()
+          task.date >= todayString
       )
       .sort(
         (a, b) =>
@@ -1216,110 +1521,59 @@ function renderDashboard() {
       )
       .slice(0, 5);
 
-  if (upcomingEl) {
-
-    upcomingEl.innerHTML =
-      `
-        <h4>
-          Échéances à venir
-        </h4>
-      ` +
-
-      (
-        upcoming.length
-
-          ? upcoming
-              .map(task => {
-
-                const subject =
-                  store.subjects.find(
-                    s =>
-                      s.id ===
-                      task.subjectId
-                  );
-
-                return `
-                  <div
-                    style="
-                      display:flex;
-                      justify-content:space-between;
-                      padding:8px;
-                      border-radius:8px;
-                      background:var(--muted);
-                    "
-                  >
-
-                    <div>
-
-                      <strong>
-                        ${escapeHtml(
-                          task.title
-                        )}
-                      </strong>
-
-                      <div class="text-muted">
-                        ${
-                          subject
-                            ? escapeHtml(
-                                subject.name
-                              )
-                            : 'Matière inconnue'
-                        }
-
-                        •
-                        ${formatDateReadable(
-                          task.date
-                        )}
-                      </div>
-
-                    </div>
-
-                    <div class="text-muted">
-                      ${escapeHtml(
-                        task.priority ||
-                        ''
-                      )}
-                    </div>
-
-                  </div>
-                `;
-              })
-              .join('')
-
-          : `
-            <div class="text-muted">
-              Aucune échéance prochaine
-            </div>
-          `
-      );
-  }
-
-
-  /* =========================
-     MOYENNE
-     ========================= */
-
-  const average =
-    computeGeneralAverage();
-
-  const avgEl =
-    document.getElementById(
-      'avgGeneral'
+  const upcomingContainer =
+    left.querySelector(
+      '#upcomingDeadlines'
     );
 
-  if (avgEl) {
+  upcomingContainer.innerHTML = `
+    <h4>
+      Échéances à venir
+    </h4>
 
-    avgEl.textContent =
-      isNaN(average)
-        ? 'Aucune note'
-        : `${average.toFixed(2)}/20`;
-  }
+    ${
+      upcoming.length
+        ? upcoming.map(
+            task => `
+
+              <div
+                style="
+                  padding:8px;
+                  margin-top:6px;
+                  border-radius:8px;
+                  background:var(--muted);
+                "
+              >
+
+                <strong>
+                  ${escapeHtml(
+                    task.title
+                  )}
+                </strong>
+
+                <div class="text-muted">
+                  ${escapeHtml(
+                    getSubjectName(
+                      task.subjectId
+                    )
+                  )}
+                  •
+                  ${formatDateReadable(
+                    task.date
+                  )}
+                </div>
+
+              </div>
+            `
+          ).join('')
+        : `
+          <div class="text-muted">
+            Aucune échéance prochaine.
+          </div>
+        `
+    }
+  `;
 }
-
-function renderDashboardMini() {
-  // Réservé pour de futures statistiques.
-}
-
 
 /* =========================================================
    TÂCHES
@@ -1327,42 +1581,39 @@ function renderDashboardMini() {
 
 function renderTasks() {
 
-  const element =
+  const container =
     document.getElementById(
       'tasksList'
     );
 
-  if (!element) return;
+  if (!container) return;
 
-  element.innerHTML = '';
+  container.innerHTML = '';
 
+  if (!store.tasks.length) {
 
-  if (store.tasks.length === 0) {
-
-    element.innerHTML = `
+    container.innerHTML = `
       <div class="text-muted">
         Aucun devoir ni évaluation.
-        Créez-en un !
       </div>
     `;
 
     return;
   }
 
+  const sorted =
+    [...store.tasks].sort(
+      (a, b) =>
+        new Date(a.date) -
+        new Date(b.date)
+    );
 
-  const tasks =
-    [...store.tasks]
-      .sort(
-        (a, b) =>
-          new Date(a.date) -
-          new Date(b.date)
-      );
-
-
-  tasks.forEach(task => {
+  sorted.forEach(task => {
 
     const item =
-      document.createElement('div');
+      document.createElement(
+        'div'
+      );
 
     item.className =
       'list-item';
@@ -1374,37 +1625,34 @@ function renderTasks() {
           task.subjectId
       );
 
-
     item.innerHTML = `
+
       <div>
 
-        <div style="font-weight:700">
-
+        <div
+          style="font-weight:700"
+        >
           ${escapeHtml(
             task.title
           )}
 
           <span
             class="text-muted"
-            style="font-weight:600"
           >
             •
             ${escapeHtml(
-              task.type ||
-              'Tâche'
+              task.type
             )}
           </span>
-
         </div>
 
         <div class="meta">
-
           ${
             subject
               ? escapeHtml(
                   subject.name
                 )
-              : ''
+              : 'Matière inconnue'
           }
 
           •
@@ -1421,11 +1669,9 @@ function renderTasks() {
                 )
               : ''
           }
-
         </div>
 
       </div>
-
 
       <div
         style="
@@ -1445,16 +1691,14 @@ function renderTasks() {
 
           <button
             class="btn small"
-            data-action="edit"
-            data-id="${task.id}"
+            data-task-edit="${task.id}"
           >
             Modifier
           </button>
 
           <button
             class="btn small btn-ghost"
-            data-action="delete"
-            data-id="${task.id}"
+            data-task-delete="${task.id}"
           >
             Supprimer
           </button>
@@ -1465,7 +1709,7 @@ function renderTasks() {
 
           <input
             type="checkbox"
-            data-id="${task.id}"
+            data-task-done="${task.id}"
             ${
               task.status === 'done'
                 ? 'checked'
@@ -1480,79 +1724,71 @@ function renderTasks() {
       </div>
     `;
 
-    element.appendChild(
+    container.appendChild(
       item
     );
   });
 
-
-  /* BOUTONS */
-
-  element
+  container
     .querySelectorAll(
-      'button[data-action]'
+      '[data-task-edit]'
     )
     .forEach(button => {
 
       button.addEventListener(
         'click',
-        event => {
+        () =>
+          openTaskModal(
+            button.dataset.taskEdit
+          )
+      );
+    });
 
-          const id =
-            event.currentTarget.dataset.id;
+  container
+    .querySelectorAll(
+      '[data-task-delete]'
+    )
+    .forEach(button => {
 
-          const action =
-            event.currentTarget.dataset.action;
+      button.addEventListener(
+        'click',
+        () => {
 
+          if (
+            confirm(
+              'Supprimer cette tâche ?'
+            )
+          ) {
 
-          if (action === 'edit') {
-
-            openTaskModal(id);
-
-          }
-
-
-          if (action === 'delete') {
-
-            if (
-              confirm(
-                'Supprimer cette tâche ?'
-              )
-            ) {
-              deleteTask(id);
-            }
-
+            deleteTask(
+              button.dataset.taskDelete
+            );
           }
         }
       );
     });
 
-
-  /* CHECKBOX */
-
-  element
+  container
     .querySelectorAll(
-      'input[type="checkbox"][data-id]'
+      '[data-task-done]'
     )
-    .forEach(checkbox => {
+    .forEach(input => {
 
-      checkbox.addEventListener(
+      input.addEventListener(
         'change',
-        event => {
-
-          const id =
-            event.currentTarget.dataset.id;
+        () => {
 
           const task =
             store.tasks.find(
               t =>
-                t.id === id
+                t.id ===
+                input.dataset.taskDone
             );
 
           if (!task) return;
 
           task.status =
-            event.currentTarget.checked
+            input.checked
               ? 'done'
               : 'scheduled';
 
@@ -1566,43 +1802,38 @@ function renderTasks() {
     });
 }
 
-
 /* =========================================================
    MODALE
    ========================================================= */
 
-function openModal(contentHtml) {
+function openModal(content) {
 
   const modal =
     document.getElementById(
       'modal'
     );
 
-  if (!modal) {
-    console.error(
-      'Élément #modal introuvable.'
-    );
-    return;
-  }
+  if (!modal) return;
 
-  modal.innerHTML =
-    `<div class="card">${contentHtml}</div>`;
+  modal.innerHTML = `
+    <div class="card">
+      ${content}
+    </div>
+  `;
 
   modal.classList.remove(
     'hidden'
   );
 
+  modal.onclick = event => {
 
-  modal.onclick =
-    event => {
-
-      if (
-        event.target ===
-        modal
-      ) {
-        closeModal();
-      }
-    };
+    if (
+      event.target ===
+      modal
+    ) {
+      closeModal();
+    }
+  };
 }
 
 function closeModal() {
@@ -1621,9 +1852,8 @@ function closeModal() {
   modal.innerHTML = '';
 }
 
-
 /* =========================================================
-   MODALE TÂCHE
+   TÂCHE : MODALE
    ========================================================= */
 
 function openTaskModal(taskId = null) {
@@ -1637,70 +1867,46 @@ function openTaskModal(taskId = null) {
         )
       : null;
 
-
   const task =
     existing || {
-
-      id:
-        uid('task'),
-
+      id: uid('task'),
       subjectId:
         store.subjects[0]?.id ||
         null,
-
-      title:
-        '',
-
-      type:
-        'Devoir',
-
-      date:
-        formatDate(
-          addDays(
-            new Date(),
-            1
-          )
-        ),
-
-      startTime:
-        '',
-
-      priority:
-        'Moyenne',
-
-      timeEstimate:
-        '30',
-
-      status:
-        'scheduled',
-
-      notes:
-        ''
+      title: '',
+      type: 'Devoir',
+      date: formatDate(
+        addDays(
+          new Date(),
+          1
+        )
+      ),
+      startTime: '',
+      priority: 'Moyenne',
+      timeEstimate: 30,
+      status: 'scheduled',
+      notes: ''
     };
 
-
   const subjectOptions =
-    store.subjects
-      .map(
-        subject =>
-          `
-          <option
-            value="${subject.id}"
-            ${
-              subject.id ===
-              task.subjectId
-                ? 'selected'
-                : ''
-            }
-          >
-            ${escapeHtml(
-              subject.name
-            )}
-          </option>
+    store.subjects.map(
+      subject =>
         `
-      )
-      .join('');
-
+        <option
+          value="${subject.id}"
+          ${
+            subject.id ===
+            task.subjectId
+              ? 'selected'
+              : ''
+          }
+        >
+          ${escapeHtml(
+            subject.name
+          )}
+        </option>
+        `
+    ).join('');
 
   const html = `
 
@@ -1728,9 +1934,7 @@ function openTaskModal(taskId = null) {
         >
           ${subjectOptions}
         </select>
-
       </label>
-
 
       <label>
         Titre
@@ -1742,9 +1946,7 @@ function openTaskModal(taskId = null) {
             task.title
           )}"
         >
-
       </label>
-
 
       <label>
         Type
@@ -1761,28 +1963,23 @@ function openTaskModal(taskId = null) {
             'Contrôle',
             'Examen',
             'Projet'
-          ]
-            .map(
-              type =>
-                `
-                <option
-                  ${
-                    task.type ===
-                    type
-                      ? 'selected'
-                      : ''
-                  }
-                >
-                  ${type}
-                </option>
+          ].map(
+            type =>
               `
-            )
-            .join('')}
+              <option
+                ${
+                  task.type === type
+                    ? 'selected'
+                    : ''
+                }
+              >
+                ${type}
+              </option>
+              `
+          ).join('')}
 
         </select>
-
       </label>
-
 
       <label>
         Date limite
@@ -1793,12 +1990,10 @@ function openTaskModal(taskId = null) {
           class="input"
           value="${task.date}"
         >
-
       </label>
 
-
       <label>
-        Heure (optionnel)
+        Heure
 
         <input
           id="taskStartTime"
@@ -1808,9 +2003,7 @@ function openTaskModal(taskId = null) {
             task.startTime || ''
           )}"
         >
-
       </label>
-
 
       <label>
         Priorité
@@ -1824,46 +2017,38 @@ function openTaskModal(taskId = null) {
             'Haute',
             'Moyenne',
             'Basse'
-          ]
-            .map(
-              priority =>
-                `
-                <option
-                  ${
-                    task.priority ===
-                    priority
-                      ? 'selected'
-                      : ''
-                  }
-                >
-                  ${priority}
-                </option>
+          ].map(
+            priority =>
               `
-            )
-            .join('')}
+              <option
+                ${
+                  task.priority ===
+                  priority
+                    ? 'selected'
+                    : ''
+                }
+              >
+                ${priority}
+              </option>
+              `
+          ).join('')}
 
         </select>
-
       </label>
 
-
       <label>
-        Temps estimé (min)
+        Temps estimé (minutes)
 
         <input
           id="taskEstimate"
           class="input"
-          value="${escapeHtml(
-            task.timeEstimate ||
-            '30'
-          )}"
+          type="number"
+          value="${task.timeEstimate || 30}"
         >
-
       </label>
 
-
       <label>
-        Notes (optionnel)
+        Notes
 
         <textarea
           id="taskNotes"
@@ -1872,27 +2057,25 @@ function openTaskModal(taskId = null) {
         >${escapeHtml(
           task.notes || ''
         )}</textarea>
-
       </label>
-
 
       <div
         style="
           display:flex;
-          gap:8px;
           justify-content:flex-end;
+          gap:8px;
         "
       >
 
         <button
-          id="cancel"
+          id="taskCancel"
           class="btn small btn-ghost"
         >
           Annuler
         </button>
 
         <button
-          id="save"
+          id="taskSave"
           class="btn rose small"
         >
           ${
@@ -1907,162 +2090,127 @@ function openTaskModal(taskId = null) {
     </div>
   `;
 
-
   openModal(html);
 
+  document
+    .getElementById(
+      'taskCancel'
+    )
+    .onclick = closeModal;
 
   document
-    .getElementById('cancel')
-    ?.addEventListener(
-      'click',
-      closeModal
-    );
+    .getElementById(
+      'taskSave'
+    )
+    .onclick = () => {
 
+      const updated = {
 
-  document
-    .getElementById('save')
-    ?.addEventListener(
-      'click',
-      () => {
+        id: task.id,
 
-        const title =
-          document
-            .getElementById(
-              'taskTitle'
-            )
-            .value
-            .trim();
+        subjectId:
+          document.getElementById(
+            'taskSubject'
+          ).value,
 
+        title:
+          document.getElementById(
+            'taskTitle'
+          ).value.trim(),
 
-        if (!title) {
+        type:
+          document.getElementById(
+            'taskType'
+          ).value,
 
-          alert(
-            'Veuillez entrer un titre.'
-          );
+        date:
+          document.getElementById(
+            'taskDate'
+          ).value,
 
-          return;
-        }
+        startTime:
+          document.getElementById(
+            'taskStartTime'
+          ).value,
 
+        priority:
+          document.getElementById(
+            'taskPriority'
+          ).value,
 
-        const updatedTask = {
+        timeEstimate:
+          Number(
+            document.getElementById(
+              'taskEstimate'
+            ).value
+          ) || 30,
 
-          id:
-            task.id,
+        status:
+          task.status ||
+          'scheduled',
 
-          subjectId:
-            document
-              .getElementById(
-                'taskSubject'
-              )
-              .value,
+        notes:
+          document.getElementById(
+            'taskNotes'
+          ).value
+      };
 
-          title:
+      if (!updated.title) {
 
-            title,
-
-          type:
-            document
-              .getElementById(
-                'taskType'
-              )
-              .value,
-
-          date:
-            document
-              .getElementById(
-                'taskDate'
-              )
-              .value,
-
-          startTime:
-            document
-              .getElementById(
-                'taskStartTime'
-              )
-              .value,
-
-          priority:
-            document
-              .getElementById(
-                'taskPriority'
-              )
-              .value,
-
-          timeEstimate:
-            document
-              .getElementById(
-                'taskEstimate'
-              )
-              .value,
-
-          status:
-            task.status ||
-            'scheduled',
-
-          notes:
-            document
-              .getElementById(
-                'taskNotes'
-              )
-              .value
-        };
-
-
-        const existingTask =
-          store.tasks.find(
-            t =>
-              t.id ===
-              updatedTask.id
-          );
-
-
-        if (existingTask) {
-
-          Object.assign(
-            existingTask,
-            updatedTask
-          );
-
-        } else {
-
-          store.tasks.push(
-            updatedTask
-          );
-        }
-
-
-        syncTaskToEvent(
-          updatedTask
+        alert(
+          'Donne un titre à la tâche.'
         );
 
-        saveStore();
-
-        closeModal();
+        return;
       }
-    );
+
+      const index =
+        store.tasks.findIndex(
+          item =>
+            item.id ===
+            updated.id
+        );
+
+      if (index >= 0) {
+
+        store.tasks[index] =
+          updated;
+
+      } else {
+
+        store.tasks.push(
+          updated
+        );
+      }
+
+      syncTaskToEvent(
+        updated
+      );
+
+      saveStore();
+
+      closeModal();
+    };
 }
 
-
 /* =========================================================
-   SYNCHRONISATION TÂCHE / CALENDRIER
+   SYNCHRONISATION TÂCHE → CALENDRIER
    ========================================================= */
 
 function syncTaskToEvent(task) {
 
   let event =
     store.events.find(
-      e =>
-        e.linkedId ===
+      item =>
+        item.linkedId ===
         task.id
     );
-
 
   if (!event) {
 
     event = {
 
-      id:
-        uid('event'),
+      id: uid('event'),
 
       title:
         `${task.type} — ${task.title}`,
@@ -2079,8 +2227,7 @@ function syncTaskToEvent(task) {
       startTime:
         task.startTime || '',
 
-      endTime:
-        '',
+      endTime: '',
 
       priority:
         task.priority ||
@@ -2125,9 +2272,8 @@ function syncTaskToEvent(task) {
   }
 }
 
-
 /* =========================================================
-   SUPPRIMER TÂCHE
+   SUPPRESSION TÂCHE
    ========================================================= */
 
 function deleteTask(id) {
@@ -2147,39 +2293,34 @@ function deleteTask(id) {
   saveStore();
 }
 
-
 /* =========================================================
-   ÉVÉNEMENT
+   ÉVÉNEMENTS
    ========================================================= */
 
-function openEventModal(event = null) {
+function openEventModal(eventData = null) {
 
-  const e =
-    event || {
+  const event =
+    eventData || {
 
-      id:
-        uid('event'),
+      id: uid('event'),
 
-      title:
-        '',
+      title: '',
 
       subjectId:
         store.subjects[0]?.id ||
         null,
 
       type:
-        'Activité extrascolaire',
+        'Activité',
 
       date:
         formatDate(
           new Date()
         ),
 
-      startTime:
-        '',
+      startTime: '',
 
-      endTime:
-        '',
+      endTime: '',
 
       priority:
         'Moyenne',
@@ -2187,40 +2328,37 @@ function openEventModal(event = null) {
       status:
         'scheduled',
 
-      linkedId:
-        null
+      linkedId: null
     };
 
-
   const subjectOptions =
-    store.subjects
-      .map(
-        subject =>
-          `
-          <option
-            value="${subject.id}"
-            ${
-              subject.id ===
-              e.subjectId
-                ? 'selected'
-                : ''
-            }
-          >
-            ${escapeHtml(
-              subject.name
-            )}
-          </option>
+    store.subjects.map(
+      subject =>
         `
-      )
-      .join('');
-
+        <option
+          value="${subject.id}"
+          ${
+            subject.id ===
+            event.subjectId
+              ? 'selected'
+              : ''
+          }
+        >
+          ${escapeHtml(
+            subject.name
+          )}
+        </option>
+        `
+    ).join('');
 
   const html = `
 
     <h3>
-      ${event
-        ? 'Modifier événement'
-        : 'Nouvel événement'}
+      ${
+        eventData
+          ? 'Modifier l’événement'
+          : 'Nouvel événement'
+      }
     </h3>
 
     <div
@@ -2234,125 +2372,115 @@ function openEventModal(event = null) {
         Matière
 
         <select
-          id="evSubject"
+          id="eventSubject"
           class="select"
         >
           ${subjectOptions}
         </select>
       </label>
 
-
       <label>
         Titre
 
         <input
-          id="evTitle"
+          id="eventTitle"
           class="input"
           value="${escapeHtml(
-            e.title
+            event.title
           )}"
         >
       </label>
-
 
       <label>
         Type
 
         <select
-          id="evType"
+          id="eventType"
           class="select"
         >
 
           ${[
+            'Activité',
             'Activité extrascolaire',
             'Révision',
             'Devoir',
             'Évaluation'
-          ]
-            .map(
-              type =>
-                `
-                <option
-                  ${
-                    e.type ===
-                    type
-                      ? 'selected'
-                      : ''
-                  }
-                >
-                  ${type}
-                </option>
+          ].map(
+            type =>
               `
-            )
-            .join('')}
+              <option
+                ${
+                  event.type ===
+                  type
+                    ? 'selected'
+                    : ''
+                }
+              >
+                ${type}
+              </option>
+              `
+          ).join('')}
 
         </select>
-
       </label>
-
 
       <label>
         Date
 
         <input
-          id="evDate"
+          id="eventDate"
           type="date"
           class="input"
-          value="${e.date}"
+          value="${event.date}"
         >
       </label>
-
 
       <label>
         Heure de début
 
         <input
-          id="evStart"
+          id="eventStart"
           class="input"
           placeholder="hh:mm"
           value="${escapeHtml(
-            e.startTime ||
-            ''
+            event.startTime || ''
           )}"
         >
       </label>
-
 
       <label>
         Heure de fin
 
         <input
-          id="evEnd"
+          id="eventEnd"
           class="input"
           placeholder="hh:mm"
           value="${escapeHtml(
-            e.endTime ||
-            ''
+            event.endTime || ''
           )}"
         >
       </label>
 
-
       <div
         style="
           display:flex;
-          gap:8px;
           justify-content:flex-end;
+          gap:8px;
         "
       >
 
         <button
-          id="cancel"
+          id="eventCancel"
           class="btn small btn-ghost"
         >
           Annuler
         </button>
 
         <button
-          id="save"
+          id="eventSave"
           class="btn rose small"
         >
-          Sauvegarder
+          Enregistrer
         </button>
 
       </div>
@@ -2360,120 +2488,87 @@ function openEventModal(event = null) {
     </div>
   `;
 
-
   openModal(html);
 
+  document
+    .getElementById(
+      'eventCancel'
+    )
+    .onclick = closeModal;
 
   document
-    .getElementById('cancel')
-    ?.addEventListener(
-      'click',
-      closeModal
-    );
+    .getElementById(
+      'eventSave'
+    )
+    .onclick = () => {
 
+      event.subjectId =
+        document.getElementById(
+          'eventSubject'
+        ).value;
 
-  document
-    .getElementById('save')
-    ?.addEventListener(
-      'click',
-      () => {
+      event.title =
+        document.getElementById(
+          'eventTitle'
+        ).value.trim();
 
-        const newEvent = {
+      event.type =
+        document.getElementById(
+          'eventType'
+        ).value;
 
-          id:
-            e.id,
+      event.date =
+        document.getElementById(
+          'eventDate'
+        ).value;
 
-          title:
-            document
-              .getElementById(
-                'evTitle'
-              )
-              .value
-              .trim(),
+      event.startTime =
+        document.getElementById(
+          'eventStart'
+        ).value;
 
-          subjectId:
-            document
-              .getElementById(
-                'evSubject'
-              )
-              .value,
+      event.endTime =
+        document.getElementById(
+          'eventEnd'
+        ).value;
 
-          type:
-            document
-              .getElementById(
-                'evType'
-              )
-              .value,
+      const index =
+        store.events.findIndex(
+          item =>
+            item.id ===
+            event.id
+        );
 
-          date:
-            document
-              .getElementById(
-                'evDate'
-              )
-              .value,
+      if (index >= 0) {
 
-          startTime:
-            document
-              .getElementById(
-                'evStart'
-              )
-              .value,
+        store.events[index] =
+          event;
 
-          endTime:
-            document
-              .getElementById(
-                'evEnd'
-              )
-              .value,
+      } else {
 
-          priority:
-            e.priority ||
-            'Moyenne',
-
-          status:
-            e.status ||
-            'scheduled',
-
-          linkedId:
-            e.linkedId ||
-            null
-        };
-
-
-        const index =
-          store.events.findIndex(
-            x =>
-              x.id ===
-              newEvent.id
-          );
-
-
-        if (index >= 0) {
-
-          store.events[index] =
-            newEvent;
-
-        } else {
-
-          store.events.push(
-            newEvent
-          );
-        }
-
-
-        saveStore();
-
-        closeModal();
+        store.events.push(
+          event
+        );
       }
-    );
+
+      saveStore();
+
+      closeModal();
+    };
 }
 
-
 /* =========================================================
-   VISUALISATION ÉVÉNEMENT
+   VISIONNEUSE ÉVÉNEMENT
    ========================================================= */
 
 function openEventViewer(event) {
+
+  const subject =
+    store.subjects.find(
+      s =>
+        s.id ===
+        event.subjectId
+    );
 
   const linkedTask =
     event.linkedId
@@ -2484,19 +2579,13 @@ function openEventViewer(event) {
         )
       : null;
 
-
-  const subject =
-    store.subjects.find(
-      s =>
-        s.id ===
-        event.subjectId
-    );
-
-
   const html = `
 
     <h3>
-      Événement
+      ${escapeHtml(
+        event.title ||
+        'Événement'
+      )}
     </h3>
 
     <div
@@ -2508,80 +2597,82 @@ function openEventViewer(event) {
 
       <div>
         <strong>
-          ${escapeHtml(
-            event.title ||
-            'Événement'
-          )}
+          Matière :
         </strong>
-      </div>
-
-
-      <div class="meta">
 
         ${
           subject
             ? escapeHtml(
                 subject.name
               )
-            : ''
+            : '—'
         }
+      </div>
 
-        •
+      <div>
+        <strong>
+          Date :
+        </strong>
 
         ${formatDateReadable(
           event.date
         )}
-
-        ${
-          event.startTime
-            ? ' • ' +
-              escapeHtml(
-                event.startTime
-              )
-            : ''
-        }
-
       </div>
 
+      <div>
+        <strong>
+          Type :
+        </strong>
 
-      <div class="text-muted">
-        Type :
         ${escapeHtml(
           event.type ||
           'Événement'
         )}
       </div>
 
-
       ${
-        linkedTask
+        event.startTime
           ? `
-            <div class="text-muted">
-              Cet événement est lié
-              à une tâche du Planner.
+            <div>
+              <strong>
+                Heure :
+              </strong>
+
+              ${escapeHtml(
+                event.startTime
+              )}
             </div>
           `
           : ''
       }
 
+      ${
+        linkedTask
+          ? `
+            <div class="text-muted">
+              Cet événement est lié à une tâche.
+            </div>
+          `
+          : ''
+      }
 
       <div
         style="
           display:flex;
-          gap:8px;
           justify-content:flex-end;
+          gap:8px;
         "
       >
 
         <button
-          id="edit"
+          id="editEvent"
           class="btn small"
         >
           Modifier
         </button>
 
         <button
-          id="toggleDone"
+          id="toggleEvent"
           class="btn small btn-ghost"
         >
           ${
@@ -2592,7 +2683,7 @@ function openEventViewer(event) {
         </button>
 
         <button
-          id="delete"
+          id="deleteEvent"
           class="btn small btn-ghost"
         >
           Supprimer
@@ -2603,107 +2694,69 @@ function openEventViewer(event) {
     </div>
   `;
 
-
   openModal(html);
 
+  document
+    .getElementById(
+      'editEvent'
+    )
+    .onclick = () => {
+
+      closeModal();
+
+      openEventModal(
+        event
+      );
+    };
 
   document
-    .getElementById('edit')
-    ?.addEventListener(
-      'click',
-      () => {
+    .getElementById(
+      'toggleEvent'
+    )
+    .onclick = () => {
 
-        closeModal();
+      event.status =
+        event.status === 'done'
+          ? 'scheduled'
+          : 'done';
 
-        openEventModal(
-          event
+      if (linkedTask) {
+
+        linkedTask.status =
+          event.status;
+      }
+
+      saveStore();
+
+      closeModal();
+    };
+
+  document
+    .getElementById(
+      'deleteEvent'
+    )
+    .onclick = () => {
+
+      if (
+        !confirm(
+          'Supprimer cet événement ?'
+        )
+      ) {
+        return;
+      }
+
+      store.events =
+        store.events.filter(
+          item =>
+            item.id !==
+            event.id
         );
-      }
-    );
 
+      saveStore();
 
-  document
-    .getElementById('toggleDone')
-    ?.addEventListener(
-      'click',
-      () => {
-
-        event.status =
-          event.status === 'done'
-            ? 'scheduled'
-            : 'done';
-
-
-        if (event.linkedId) {
-
-          const task =
-            store.tasks.find(
-              t =>
-                t.id ===
-                event.linkedId
-            );
-
-          if (task) {
-
-            task.status =
-              event.status;
-          }
-        }
-
-
-        saveStore();
-
-        closeModal();
-      }
-    );
-
-
-  document
-    .getElementById('delete')
-    ?.addEventListener(
-      'click',
-      () => {
-
-        if (
-          !confirm(
-            'Supprimer cet événement ?'
-          )
-        ) {
-          return;
-        }
-
-
-        store.events =
-          store.events.filter(
-            e =>
-              e.id !==
-              event.id
-          );
-
-
-        if (event.linkedId) {
-
-          const task =
-            store.tasks.find(
-              t =>
-                t.id ===
-                event.linkedId
-            );
-
-          if (task) {
-            task.linkedId =
-              null;
-          }
-        }
-
-
-        saveStore();
-
-        closeModal();
-      }
-    );
+      closeModal();
+    };
 }
-
 
 /* =========================================================
    LEÇONS
@@ -2711,19 +2764,18 @@ function openEventViewer(event) {
 
 function renderLessons() {
 
-  const element =
+  const container =
     document.getElementById(
       'lessonsList'
     );
 
-  if (!element) return;
+  if (!container) return;
 
-  element.innerHTML = '';
+  container.innerHTML = '';
 
+  if (!store.lessons.length) {
 
-  if (store.lessons.length === 0) {
-
-    element.innerHTML = `
+    container.innerHTML = `
       <div class="text-muted">
         Aucune leçon enregistrée.
       </div>
@@ -2732,193 +2784,149 @@ function renderLessons() {
     return;
   }
 
+  store.lessons.forEach(
+    lesson => {
 
-  const lessons =
-    [...store.lessons]
-      .sort(
-        (a, b) =>
-          new Date(a.date) -
-          new Date(b.date)
-      );
+      const subject =
+        store.subjects.find(
+          s =>
+            s.id ===
+            lesson.subjectId
+        );
 
+      const item =
+        document.createElement(
+          'div'
+        );
 
-  lessons.forEach(lesson => {
+      item.className =
+        'list-item';
 
-    const subject =
-      store.subjects.find(
-        s =>
-          s.id ===
-          lesson.subjectId
-      );
+      item.innerHTML = `
 
+        <div>
 
-    const revisions =
-      store.revisions.filter(
-        revision =>
-          revision.lessonId ===
-          lesson.id
-      );
+          <strong>
+            ${escapeHtml(
+              lesson.titre ||
+              'Leçon'
+            )}
+          </strong>
 
+          <div class="meta">
 
-    const item =
-      document.createElement('div');
+            ${
+              subject
+                ? escapeHtml(
+                    subject.name
+                  )
+                : ''
+            }
 
-    item.className =
-      'list-item';
+            •
+            ${formatDateReadable(
+              lesson.date
+            )}
 
-
-    item.innerHTML = `
-
-      <div>
-
-        <div
-          style="
-            font-weight:700;
-          "
-        >
-          ${escapeHtml(
-            lesson.titre ||
-            'Leçon'
-          )}
-        </div>
-
-        <div class="meta">
+          </div>
 
           ${
-            subject
-              ? escapeHtml(
-                  subject.name
-                )
+            lesson.chapitre
+              ? `
+                <div class="meta">
+                  Chapitre :
+                  ${escapeHtml(
+                    lesson.chapitre
+                  )}
+                </div>
+              `
               : ''
           }
 
-          •
-
-          ${escapeHtml(
-            lesson.chapitre ||
-            'Sans chapitre'
-          )}
-
-          •
-
-          ${formatDateReadable(
-            lesson.date
-          )}
-
         </div>
 
-        ${
-          lesson.use2257
-            ? `
-              <div
-                class="meta"
-                style="
-                  margin-top:4px;
-                "
-              >
-                🌸 Méthode 2,3,5,7 activée
-                (${revisions.length}/4 révisions)
-              </div>
-            `
-            : ''
-        }
-
-      </div>
-
-
-      <div
-        style="
-          display:flex;
-          gap:6px;
-        "
-      >
-
-        <button
-          class="btn small"
-          data-action="view"
-          data-id="${lesson.id}"
+        <div
+          style="
+            display:flex;
+            gap:6px;
+          "
         >
-          Voir
-        </button>
 
-        <button
-          class="btn small"
-          data-action="edit"
-          data-id="${lesson.id}"
-        >
-          Modifier
-        </button>
+          <button
+            class="btn small"
+            data-lesson-view="${lesson.id}"
+          >
+            Voir
+          </button>
 
-        <button
-          class="btn small btn-ghost"
-          data-action="delete"
-          data-id="${lesson.id}"
-        >
-          Supprimer
-        </button>
+          <button
+            class="btn small"
+            data-lesson-edit="${lesson.id}"
+          >
+            Modifier
+          </button>
 
-      </div>
-    `;
+          <button
+            class="btn small btn-ghost"
+            data-lesson-delete="${lesson.id}"
+          >
+            Supprimer
+          </button>
 
+        </div>
+      `;
 
-    element.appendChild(
-      item
-    );
-  });
+      container.appendChild(
+        item
+      );
+    }
+  );
 
-
-  element
+  container
     .querySelectorAll(
-      'button[data-action]'
+      '[data-lesson-view]'
     )
     .forEach(button => {
 
-      button.addEventListener(
-        'click',
-        event => {
+      button.onclick = () =>
+        openLessonViewer(
+          button.dataset.lessonView
+        );
+    });
 
-          const id =
-            event.currentTarget.dataset.id;
+  container
+    .querySelectorAll(
+      '[data-lesson-edit]'
+    )
+    .forEach(button => {
 
-          const action =
-            event.currentTarget.dataset.action;
+      button.onclick = () =>
+        openLessonModal(
+          button.dataset.lessonEdit
+        );
+    });
 
+  container
+    .querySelectorAll(
+      '[data-lesson-delete]'
+    )
+    .forEach(button => {
 
-          if (
-            action === 'view'
-          ) {
-            openLessonViewer(id);
-          }
+      button.onclick = () => {
 
+        if (
+          confirm(
+            'Supprimer cette leçon et ses révisions ?'
+          )
+        ) {
 
-          if (
-            action === 'edit'
-          ) {
-            openLessonModal(id);
-          }
-
-
-          if (
-            action === 'delete'
-          ) {
-
-            if (
-              confirm(
-                'Supprimer cette leçon et ses révisions ?'
-              )
-            ) {
-              deleteLesson(id);
-            }
-          }
+          deleteLesson(
+            button.dataset.lessonDelete
+          );
         }
-      );
+      };
     });
 }
-
-
-/* =========================================================
-   CRÉER / MODIFIER LEÇON
-   ========================================================= */
 
 function openLessonModal(
   lessonId = null
@@ -2933,22 +2941,18 @@ function openLessonModal(
         )
       : null;
 
-
   const lesson =
     existing || {
 
-      id:
-        uid('lesson'),
+      id: uid('lesson'),
 
       subjectId:
         store.subjects[0]?.id ||
         null,
 
-      chapitre:
-        '',
+      chapitre: '',
 
-      titre:
-        '',
+      titre: '',
 
       date:
         formatDate(
@@ -2958,33 +2962,28 @@ function openLessonModal(
           )
         ),
 
-      use2257:
-        false
+      use2257: false
     };
 
-
   const subjectOptions =
-    store.subjects
-      .map(
-        subject =>
-          `
-          <option
-            value="${subject.id}"
-            ${
-              subject.id ===
-              lesson.subjectId
-                ? 'selected'
-                : ''
-            }
-          >
-            ${escapeHtml(
-              subject.name
-            )}
-          </option>
+    store.subjects.map(
+      subject =>
         `
-      )
-      .join('');
-
+        <option
+          value="${subject.id}"
+          ${
+            subject.id ===
+            lesson.subjectId
+              ? 'selected'
+              : ''
+          }
+        >
+          ${escapeHtml(
+            subject.name
+          )}
+        </option>
+        `
+    ).join('');
 
   const html = `
 
@@ -3007,19 +3006,18 @@ function openLessonModal(
         Matière
 
         <select
-          id="lesSubject"
+          id="lessonSubject"
           class="select"
         >
           ${subjectOptions}
         </select>
       </label>
 
-
       <label>
         Chapitre
 
         <input
-          id="lesChap"
+          id="lessonChapter"
           class="input"
           value="${escapeHtml(
             lesson.chapitre
@@ -3027,12 +3025,11 @@ function openLessonModal(
         >
       </label>
 
-
       <label>
         Titre de la leçon
 
         <input
-          id="lesTitle"
+          id="lessonTitle"
           class="input"
           value="${escapeHtml(
             lesson.titre
@@ -3040,18 +3037,16 @@ function openLessonModal(
         >
       </label>
 
-
       <label>
         Date de la leçon
 
         <input
-          id="lesDate"
+          id="lessonDate"
           type="date"
           class="input"
           value="${lesson.date}"
         >
       </label>
-
 
       <label>
 
@@ -3065,40 +3060,35 @@ function openLessonModal(
           }
         >
 
-        Activer la méthode
-        <strong>2,3,5,7</strong>
-
-        <div
-          class="text-muted"
-          style="
-            margin-left:24px;
-            margin-top:4px;
-          "
-        >
-          Révisions automatiques :
-          J+2 • J+3 • J+5 • J+7
-        </div>
+        Activer la
+        <strong>
+          méthode 2,3,5,7
+        </strong>
 
       </label>
 
+      <div class="text-muted">
+        Les révisions seront créées automatiquement à
+        J+2, J+3, J+5 et J+7.
+      </div>
 
       <div
         style="
           display:flex;
-          gap:8px;
           justify-content:flex-end;
+          gap:8px;
         "
       >
 
         <button
-          id="cancel"
+          id="lessonCancel"
           class="btn small btn-ghost"
         >
           Annuler
         </button>
 
         <button
-          id="save"
+          id="lessonSave"
           class="btn rose small"
         >
           Enregistrer
@@ -3109,234 +3099,197 @@ function openLessonModal(
     </div>
   `;
 
-
   openModal(html);
 
+  document
+    .getElementById(
+      'lessonCancel'
+    )
+    .onclick = closeModal;
 
   document
-    .getElementById('cancel')
-    ?.addEventListener(
-      'click',
-      closeModal
-    );
+    .getElementById(
+      'lessonSave'
+    )
+    .onclick = () => {
 
+      const updated = {
 
-  document
-    .getElementById('save')
-    ?.addEventListener(
-      'click',
-      () => {
+        id: lesson.id,
 
-        const title =
-          document
-            .getElementById(
-              'lesTitle'
-            )
-            .value
-            .trim();
+        subjectId:
+          document.getElementById(
+            'lessonSubject'
+          ).value,
 
+        chapitre:
+          document.getElementById(
+            'lessonChapter'
+          ).value.trim(),
 
-        if (!title) {
+        titre:
+          document.getElementById(
+            'lessonTitle'
+          ).value.trim(),
 
-          alert(
-            'Veuillez entrer un titre de leçon.'
+        date:
+          document.getElementById(
+            'lessonDate'
+          ).value,
+
+        use2257:
+          document.getElementById(
+            'use2257'
+          ).checked
+      };
+
+      const index =
+        store.lessons.findIndex(
+          item =>
+            item.id ===
+            updated.id
+        );
+
+      if (index >= 0) {
+
+        store.lessons[index] =
+          updated;
+
+      } else {
+
+        store.lessons.push(
+          updated
+        );
+      }
+
+      if (
+        updated.use2257
+      ) {
+
+        create2257Revisions(
+          updated
+        );
+
+      } else {
+
+        store.revisions =
+          store.revisions.filter(
+            revision =>
+              revision.lessonId !==
+              updated.id
           );
+      }
 
-          return;
-        }
+      saveStore();
 
+      closeModal();
+    };
+}
 
-        const updatedLesson = {
+/* =========================================================
+   MÉTHODE 2,3,5,7
+   ========================================================= */
 
-          id:
+function create2257Revisions(
+  lesson
+) {
+
+  const intervals = [
+    2,
+    3,
+    5,
+    7
+  ];
+
+  intervals.forEach(
+    offset => {
+
+      const date =
+        formatDate(
+          addDays(
+            new Date(
+              lesson.date +
+              'T00:00:00'
+            ),
+            offset
+          )
+        );
+
+      const existing =
+        store.revisions.find(
+          revision =>
+            revision.lessonId ===
+              lesson.id &&
+            revision.offset ===
+              offset
+        );
+
+      if (existing) {
+
+        existing.subjectId =
+          lesson.subjectId;
+
+        existing.title =
+          `Révision ${offset === 2 ? 'J+2' :
+            offset === 3 ? 'J+3' :
+            offset === 5 ? 'J+5' :
+            'J+7'} — ${
+              lesson.titre
+            }`;
+
+        existing.date =
+          date;
+
+      } else {
+
+        store.revisions.push({
+
+          id: uid('revision'),
+
+          lessonId:
             lesson.id,
 
           subjectId:
-            document
-              .getElementById(
-                'lesSubject'
-              )
-              .value,
+            lesson.subjectId,
 
-          chapitre:
-            document
-              .getElementById(
-                'lesChap'
-              )
-              .value
-              .trim(),
+          title:
+            `Révision ${offset === 2 ? 'J+2' :
+              offset === 3 ? 'J+3' :
+              offset === 5 ? 'J+5' :
+              'J+7'} — ${
+                lesson.titre
+              }`,
 
-          titre:
-            title,
+          date,
 
-          date:
-            document
-              .getElementById(
-                'lesDate'
-              )
-              .value,
+          offset,
 
-          use2257:
-            document
-              .getElementById(
-                'use2257'
-              )
-              .checked
-        };
-
-
-        const existingLesson =
-          store.lessons.find(
-            l =>
-              l.id ===
-              updatedLesson.id
-          );
-
-
-        if (existingLesson) {
-
-          Object.assign(
-            existingLesson,
-            updatedLesson
-          );
-
-        } else {
-
-          store.lessons.push(
-            updatedLesson
-          );
-        }
-
-
-        /*
-          MÉTHODE 2,3,5,7
-
-          J+2
-          J+3
-          J+5
-          J+7
-        */
-
-        if (
-          updatedLesson.use2257
-        ) {
-
-          const revisionDays =
-            [2, 3, 5, 7];
-
-          revisionDays.forEach(
-            offset => {
-
-              const revisionDate =
-                formatDate(
-                  addDays(
-                    new Date(
-                      updatedLesson.date
-                    ),
-                    offset
-                  )
-                );
-
-
-              const existingRevision =
-                store.revisions.find(
-                  revision =>
-                    revision.lessonId ===
-                      updatedLesson.id &&
-                    revision.offset ===
-                      offset
-                );
-
-
-              if (
-                existingRevision
-              ) {
-
-                existingRevision.date =
-                  revisionDate;
-
-                existingRevision.subjectId =
-                  updatedLesson.subjectId;
-
-                existingRevision.title =
-                  `Révision 2,3,5,7 — ${updatedLesson.titre}`;
-
-              } else {
-
-                store.revisions.push({
-
-                  id:
-                    uid('revision'),
-
-                  lessonId:
-                    updatedLesson.id,
-
-                  subjectId:
-                    updatedLesson.subjectId,
-
-                  title:
-                    `Révision 2,3,5,7 — ${updatedLesson.titre}`,
-
-                  date:
-                    revisionDate,
-
-                  offset:
-                    offset,
-
-                  status:
-                    'scheduled'
-                });
-              }
-            }
-          );
-
-        } else {
-
-          /*
-            Si la méthode est désactivée,
-            supprimer les anciennes révisions
-            automatiques de cette leçon.
-          */
-
-          store.revisions =
-            store.revisions.filter(
-              revision =>
-                revision.lessonId !==
-                updatedLesson.id
-            );
-        }
-
-
-        saveStore();
-
-        closeModal();
+          status:
+            'scheduled'
+        });
       }
-    );
+    }
+  );
 }
 
-
-/* =========================================================
-   VISUALISATION LEÇON
-   ========================================================= */
-
-function openLessonViewer(id) {
+function openLessonViewer(
+  id
+) {
 
   const lesson =
     store.lessons.find(
-      l =>
-        l.id === id
+      item =>
+        item.id === id
     );
 
   if (!lesson) return;
 
-
   const subject =
     store.subjects.find(
-      s =>
-        s.id ===
+      item =>
+        item.id ===
         lesson.subjectId
     );
-
 
   const revisions =
     store.revisions
@@ -3351,99 +3304,64 @@ function openLessonViewer(id) {
           b.offset
       );
 
-
   const revisionHtml =
     revisions.length
+      ? revisions.map(
+          revision => `
 
-      ? revisions
-          .map(
-            revision =>
-              `
-              <div
-                style="
-                  padding:8px;
-                  border-radius:8px;
-                  background:var(--muted);
-                  display:flex;
-                  justify-content:space-between;
-                  align-items:center;
-                  gap:8px;
-                "
-              >
+            <div
+              style="
+                padding:8px;
+                margin-top:6px;
+                border-radius:8px;
+                background:var(--muted);
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+                gap:8px;
+              "
+            >
 
-                <div>
+              <div>
 
-                  <strong>
-                    J+${revision.offset}
-                  </strong>
+                <strong>
+                  ${escapeHtml(
+                    revision.title
+                  )}
+                </strong>
 
-                  <div class="meta">
-                    ${formatDateReadable(
-                      revision.date
-                    )}
-                  </div>
-
-                  <div class="text-muted">
-                    ${
-                      revision.status ===
-                      'done'
-                        ? '✓ Révision terminée'
-                        : 'À réviser'
-                    }
-                  </div>
-
-                </div>
-
-
-                <div
-                  style="
-                    display:flex;
-                    gap:6px;
-                  "
-                >
-
-                  <button
-                    class="btn small"
-                    data-action="mark"
-                    data-id="${revision.id}"
-                  >
-                    ${
-                      revision.status ===
-                      'done'
-                        ? 'Annuler'
-                        : 'Terminé'
-                    }
-                  </button>
-
-                  <button
-                    class="btn small btn-ghost"
-                    data-action="edit"
-                    data-id="${revision.id}"
-                  >
-                    Modifier
-                  </button>
-
-                  <button
-                    class="btn small btn-ghost"
-                    data-action="delete"
-                    data-id="${revision.id}"
-                  >
-                    Suppr.
-                  </button>
-
+                <div class="meta">
+                  ${formatDateReadable(
+                    revision.date
+                  )}
                 </div>
 
               </div>
-            `
-          )
-          .join('')
 
+              <div>
+
+                <button
+                  class="btn small"
+                  data-revision-toggle="${revision.id}"
+                >
+                  ${
+                    revision.status ===
+                    'done'
+                      ? 'Annuler'
+                      : 'Terminé'
+                  }
+                </button>
+
+              </div>
+
+            </div>
+          `
+        ).join('')
       : `
         <div class="text-muted">
           Aucune révision planifiée.
         </div>
       `;
-
 
   const html = `
 
@@ -3461,48 +3379,47 @@ function openLessonViewer(id) {
     >
 
       <div>
-        <strong>Matière :</strong>
+        <strong>
+          Matière :
+        </strong>
+
         ${
           subject
             ? escapeHtml(
                 subject.name
               )
-            : ''
+            : '—'
         }
       </div>
 
-
       <div>
-        <strong>Chapitre :</strong>
-        ${escapeHtml(
-          lesson.chapitre ||
-          '—'
-        )}
+        <strong>
+          Chapitre :
+        </strong>
+
+        ${
+          escapeHtml(
+            lesson.chapitre ||
+            '—'
+          )
+        }
       </div>
 
-
       <div>
-        <strong>Date :</strong>
+        <strong>
+          Date :
+        </strong>
+
         ${formatDateReadable(
           lesson.date
         )}
       </div>
 
-
       <h4>
-        Méthode 2,3,5,7
+        🔄 Méthode 2,3,5,7
       </h4>
 
-      ${
-        lesson.use2257
-          ? revisionHtml
-          : `
-            <div class="text-muted">
-              La méthode 2,3,5,7 n'est pas activée.
-            </div>
-          `
-      }
-
+      ${revisionHtml}
 
       <div
         style="
@@ -3513,7 +3430,7 @@ function openLessonViewer(id) {
       >
 
         <button
-          id="close"
+          id="closeLessonViewer"
           class="btn small btn-ghost"
         >
           Fermer
@@ -3524,267 +3441,49 @@ function openLessonViewer(id) {
     </div>
   `;
 
-
   openModal(html);
 
-
   document
-    .getElementById('close')
-    ?.addEventListener(
-      'click',
-      closeModal
-    );
-
+    .getElementById(
+      'closeLessonViewer'
+    )
+    .onclick = closeModal;
 
   document
     .querySelectorAll(
-      '#modal [data-action]'
+      '[data-revision-toggle]'
     )
     .forEach(button => {
 
-      button.addEventListener(
-        'click',
-        event => {
+      button.onclick = () => {
 
-          const revisionId =
-            event.currentTarget.dataset.id;
+        const revision =
+          store.revisions.find(
+            item =>
+              item.id ===
+              button.dataset
+                .revisionToggle
+          );
 
-          const action =
-            event.currentTarget.dataset.action;
+        if (!revision)
+          return;
 
-
-          const revision =
-            store.revisions.find(
-              r =>
-                r.id ===
-                revisionId
-            );
-
-          if (!revision) return;
-
-
-          if (
-            action === 'mark'
-          ) {
-
-            revision.status =
-              revision.status ===
-              'done'
-                ? 'scheduled'
-                : 'done';
-
-            saveStore();
-
-            closeModal();
-
-            openLessonViewer(
-              lesson.id
-            );
-          }
-
-
-          if (
-            action === 'edit'
-          ) {
-
-            closeModal();
-
-            openRevisionEditModal(
-              revision
-            );
-          }
-
-
-          if (
-            action === 'delete'
-          ) {
-
-            if (
-              confirm(
-                'Supprimer cette révision ?'
-              )
-            ) {
-
-              store.revisions =
-                store.revisions.filter(
-                  r =>
-                    r.id !==
-                    revisionId
-                );
-
-              saveStore();
-
-              closeModal();
-
-              openLessonViewer(
-                lesson.id
-              );
-            }
-          }
-        }
-      );
-    });
-}
-
-
-/* =========================================================
-   MODIFIER RÉVISION
-   ========================================================= */
-
-function openRevisionEditModal(
-  revision
-) {
-
-  const subjectOptions =
-    store.subjects
-      .map(
-        subject =>
-          `
-          <option
-            value="${subject.id}"
-            ${
-              subject.id ===
-              revision.subjectId
-                ? 'selected'
-                : ''
-            }
-          >
-            ${escapeHtml(
-              subject.name
-            )}
-          </option>
-        `
-      )
-      .join('');
-
-
-  const html = `
-
-    <h3>
-      Modifier la révision
-    </h3>
-
-    <div
-      style="
-        display:grid;
-        gap:8px;
-      "
-    >
-
-      <label>
-        Matière
-
-        <select
-          id="revSubject"
-          class="select"
-        >
-          ${subjectOptions}
-        </select>
-      </label>
-
-
-      <label>
-        Titre
-
-        <input
-          id="revTitle"
-          class="input"
-          value="${escapeHtml(
-            revision.title
-          )}"
-        >
-      </label>
-
-
-      <label>
-        Date
-
-        <input
-          id="revDate"
-          type="date"
-          class="input"
-          value="${revision.date}"
-        >
-      </label>
-
-
-      <div
-        style="
-          display:flex;
-          gap:8px;
-          justify-content:flex-end;
-        "
-      >
-
-        <button
-          id="cancel"
-          class="btn small btn-ghost"
-        >
-          Annuler
-        </button>
-
-        <button
-          id="save"
-          class="btn rose small"
-        >
-          Enregistrer
-        </button>
-
-      </div>
-
-    </div>
-  `;
-
-
-  openModal(html);
-
-
-  document
-    .getElementById('cancel')
-    ?.addEventListener(
-      'click',
-      closeModal
-    );
-
-
-  document
-    .getElementById('save')
-    ?.addEventListener(
-      'click',
-      () => {
-
-        revision.subjectId =
-          document
-            .getElementById(
-              'revSubject'
-            )
-            .value;
-
-        revision.title =
-          document
-            .getElementById(
-              'revTitle'
-            )
-            .value;
-
-        revision.date =
-          document
-            .getElementById(
-              'revDate'
-            )
-            .value;
+        revision.status =
+          revision.status ===
+          'done'
+            ? 'scheduled'
+            : 'done';
 
         saveStore();
 
         closeModal();
-      }
-    );
+
+        openLessonViewer(
+          lesson.id
+        );
+      };
+    });
 }
-
-
-/* =========================================================
-   SUPPRIMER LEÇON
-   ========================================================= */
 
 function deleteLesson(id) {
 
@@ -3803,26 +3502,24 @@ function deleteLesson(id) {
   saveStore();
 }
 
-
 /* =========================================================
    ÉVALUATIONS
    ========================================================= */
 
 function renderEvals() {
 
-  const element =
+  const container =
     document.getElementById(
       'evalsList'
     );
 
-  if (!element) return;
+  if (!container) return;
 
-  element.innerHTML = '';
+  container.innerHTML = '';
 
+  if (!store.evals.length) {
 
-  if (store.evals.length === 0) {
-
-    element.innerHTML = `
+    container.innerHTML = `
       <div class="text-muted">
         Aucune évaluation enregistrée.
       </div>
@@ -3831,196 +3528,161 @@ function renderEvals() {
     return;
   }
 
+  store.evals.forEach(
+    evaluation => {
 
-  const evaluations =
-    [...store.evals]
-      .sort(
-        (a, b) =>
-          new Date(a.date) -
-          new Date(b.date)
-      );
+      const subject =
+        store.subjects.find(
+          s =>
+            s.id ===
+            evaluation.subjectId
+        );
 
+      const item =
+        document.createElement(
+          'div'
+        );
 
-  evaluations.forEach(evaluation => {
+      item.className =
+        'list-item';
 
-    const subject =
-      store.subjects.find(
-        s =>
-          s.id ===
-          evaluation.subjectId
-      );
+      item.innerHTML = `
 
+        <div>
 
-    const item =
-      document.createElement('div');
+          <strong>
+            ${escapeHtml(
+              evaluation.nom
+            )}
+          </strong>
 
-    item.className =
-      'list-item';
+          <div class="meta">
 
+            ${
+              subject
+                ? escapeHtml(
+                    subject.name
+                  )
+                : ''
+            }
 
-    item.innerHTML = `
+            •
 
-      <div>
+            ${formatDateReadable(
+              evaluation.date
+            )}
+
+            • Coef
+            ${
+              evaluation.coefficient ||
+              1
+            }
+
+          </div>
+
+          <div class="meta">
+
+            Pronostic :
+            <strong>
+              ${
+                evaluation.pronostique ??
+                '-'
+              }
+            </strong>
+
+            •
+
+            Vraie note :
+            <strong>
+              ${
+                evaluation.vraie ??
+                '-'
+              }
+            </strong>
+
+          </div>
+
+        </div>
 
         <div
           style="
-            font-weight:700;
+            display:flex;
+            gap:6px;
           "
         >
-          ${escapeHtml(
-            evaluation.nom
-          )}
-        </div>
 
+          <button
+            class="btn small"
+            data-eval-edit="${evaluation.id}"
+          >
+            Modifier
+          </button>
 
-        <div class="meta">
-
-          ${
-            subject
-              ? escapeHtml(
-                  subject.name
-                )
-              : ''
-          }
-
-          •
-
-          ${formatDateReadable(
-            evaluation.date
-          )}
-
-          •
-
-          Coef
-          ${
-            evaluation.coefficient ||
-            1
-          }
+          <button
+            class="btn small btn-ghost"
+            data-eval-delete="${evaluation.id}"
+          >
+            Supprimer
+          </button>
 
         </div>
+      `;
 
+      container.appendChild(
+        item
+      );
+    }
+  );
 
-        <div class="meta">
-
-          Pronostic :
-          <strong>
-            ${
-              evaluation.pronostique ??
-              '-'
-            }
-          </strong>
-
-          •
-
-          Vraie note :
-          <strong>
-            ${
-              evaluation.vraie ??
-              '-'
-            }
-          </strong>
-
-        </div>
-
-      </div>
-
-
-      <div
-        style="
-          display:flex;
-          gap:6px;
-        "
-      >
-
-        <button
-          class="btn small"
-          data-action="edit"
-          data-id="${evaluation.id}"
-        >
-          Modifier
-        </button>
-
-        <button
-          class="btn small btn-ghost"
-          data-action="delete"
-          data-id="${evaluation.id}"
-        >
-          Supprimer
-        </button>
-
-      </div>
-    `;
-
-
-    element.appendChild(
-      item
-    );
-  });
-
-
-  element
+  container
     .querySelectorAll(
-      'button[data-action]'
+      '[data-eval-edit]'
     )
     .forEach(button => {
 
-      button.addEventListener(
-        'click',
-        event => {
+      button.onclick = () =>
+        openEvalModal(
+          button.dataset.evalEdit
+        );
+    });
 
-          const id =
-            event.currentTarget.dataset.id;
+  container
+    .querySelectorAll(
+      '[data-eval-delete]'
+    )
+    .forEach(button => {
 
-          const action =
-            event.currentTarget.dataset.action;
+      button.onclick = () => {
 
-
-          if (
-            action === 'edit'
-          ) {
-
-            openEvalModal(id);
-          }
-
-
-          if (
-            action === 'delete'
-          ) {
-
-            if (
-              confirm(
-                'Supprimer cette évaluation ?'
-              )
-            ) {
-
-              store.evals =
-                store.evals.filter(
-                  evaluation =>
-                    evaluation.id !==
-                    id
-                );
-
-
-              store.events =
-                store.events.filter(
-                  event =>
-                    event.linkedId !==
-                    id
-                );
-
-
-              saveStore();
-            }
-          }
+        if (
+          !confirm(
+            'Supprimer cette évaluation ?'
+          )
+        ) {
+          return;
         }
-      );
+
+        const id =
+          button.dataset.evalDelete;
+
+        store.evals =
+          store.evals.filter(
+            evaluation =>
+              evaluation.id !==
+              id
+          );
+
+        store.events =
+          store.events.filter(
+            event =>
+              event.linkedId !==
+              id
+          );
+
+        saveStore();
+      };
     });
 }
-
-
-/* =========================================================
-   MODALE ÉVALUATION
-   ========================================================= */
 
 function openEvalModal(
   evalId = null
@@ -4035,19 +3697,16 @@ function openEvalModal(
         )
       : null;
 
-
   const evaluation =
     existing || {
 
-      id:
-        uid('eval'),
+      id: uid('eval'),
 
       subjectId:
         store.subjects[0]?.id ||
         null,
 
-      nom:
-        '',
+      nom: '',
 
       date:
         formatDate(
@@ -4057,46 +3716,39 @@ function openEvalModal(
           )
         ),
 
-      pronostique:
-        null,
+      pronostique: null,
 
-      vraie:
-        null,
+      vraie: null,
 
-      coefficient:
-        1
+      coefficient: 1
     };
 
-
   const subjectOptions =
-    store.subjects
-      .map(
-        subject =>
-          `
-          <option
-            value="${subject.id}"
-            ${
-              subject.id ===
-              evaluation.subjectId
-                ? 'selected'
-                : ''
-            }
-          >
-            ${escapeHtml(
-              subject.name
-            )}
-          </option>
+    store.subjects.map(
+      subject =>
         `
-      )
-      .join('');
-
+        <option
+          value="${subject.id}"
+          ${
+            subject.id ===
+            evaluation.subjectId
+              ? 'selected'
+              : ''
+          }
+        >
+          ${escapeHtml(
+            subject.name
+          )}
+        </option>
+        `
+    ).join('');
 
   const html = `
 
     <h3>
       ${
         evalId
-          ? 'Modifier évaluation'
+          ? 'Modifier l’évaluation'
           : 'Nouvelle évaluation'
       }
     </h3>
@@ -4119,7 +3771,6 @@ function openEvalModal(
         </select>
       </label>
 
-
       <label>
         Nom
 
@@ -4132,7 +3783,6 @@ function openEvalModal(
         >
       </label>
 
-
       <label>
         Date
 
@@ -4144,17 +3794,16 @@ function openEvalModal(
         >
       </label>
 
-
       <label>
         Note pronostiquée
 
         <input
-          id="evalPron"
+          id="evalPrediction"
+          class="input"
           type="number"
           min="0"
           max="20"
           step="0.25"
-          class="input"
           value="${
             evaluation.pronostique ??
             ''
@@ -4162,17 +3811,16 @@ function openEvalModal(
         >
       </label>
 
-
       <label>
         Vraie note
 
         <input
           id="evalReal"
+          class="input"
           type="number"
           min="0"
           max="20"
           step="0.25"
-          class="input"
           value="${
             evaluation.vraie ??
             ''
@@ -4180,16 +3828,15 @@ function openEvalModal(
         >
       </label>
 
-
       <label>
         Coefficient
 
         <input
-          id="evalCoef"
-          type="number"
-          min="0.1"
-          step="0.1"
+          id="evalCoefficient"
           class="input"
+          type="number"
+          min="1"
+          step="1"
           value="${
             evaluation.coefficient ||
             1
@@ -4197,24 +3844,23 @@ function openEvalModal(
         >
       </label>
 
-
       <div
         style="
           display:flex;
-          gap:8px;
           justify-content:flex-end;
+          gap:8px;
         "
       >
 
         <button
-          id="cancel"
+          id="evalCancel"
           class="btn small btn-ghost"
         >
           Annuler
         </button>
 
         <button
-          id="save"
+          id="evalSave"
           class="btn rose small"
         >
           Enregistrer
@@ -4225,329 +3871,135 @@ function openEvalModal(
     </div>
   `;
 
-
   openModal(html);
 
+  document
+    .getElementById(
+      'evalCancel'
+    )
+    .onclick = closeModal;
 
   document
-    .getElementById('cancel')
-    ?.addEventListener(
-      'click',
-      closeModal
-    );
+    .getElementById(
+      'evalSave'
+    )
+    .onclick = () => {
 
+      evaluation.subjectId =
+        document.getElementById(
+          'evalSubject'
+        ).value;
 
-  document
-    .getElementById('save')
-    ?.addEventListener(
-      'click',
-      () => {
+      evaluation.nom =
+        document.getElementById(
+          'evalName'
+        ).value.trim();
 
-        const name =
-          document
-            .getElementById(
-              'evalName'
-            )
-            .value
-            .trim();
+      evaluation.date =
+        document.getElementById(
+          'evalDate'
+        ).value;
 
+      const prediction =
+        document.getElementById(
+          'evalPrediction'
+        ).value;
 
-        if (!name) {
+      const real =
+        document.getElementById(
+          'evalReal'
+        ).value;
 
-          alert(
-            'Veuillez entrer le nom de l’évaluation.'
-          );
+      const coefficient =
+        document.getElementById(
+          'evalCoefficient'
+        ).value;
 
-          return;
-        }
+      evaluation.pronostique =
+        prediction === ''
+          ? null
+          : Number(
+              prediction
+            );
 
+      evaluation.vraie =
+        real === ''
+          ? null
+          : Number(real);
 
-        evaluation.subjectId =
-          document
-            .getElementById(
-              'evalSubject'
-            )
-            .value;
+      evaluation.coefficient =
+        coefficient === ''
+          ? 1
+          : Number(
+              coefficient
+            );
 
-        evaluation.nom =
-          name;
-
-        evaluation.date =
-          document
-            .getElementById(
-              'evalDate'
-            )
-            .value;
-
-
-        const pron =
-          document
-            .getElementById(
-              'evalPron'
-            )
-            .value;
-
-        evaluation.pronostique =
-          pron === ''
-            ? null
-            : Number(pron);
-
-
-        const real =
-          document
-            .getElementById(
-              'evalReal'
-            )
-            .value;
-
-        evaluation.vraie =
-          real === ''
-            ? null
-            : Number(real);
-
-
-        const coef =
-          document
-            .getElementById(
-              'evalCoef'
-            )
-            .value;
-
-        evaluation.coefficient =
-          coef === ''
-            ? 1
-            : Number(coef);
-
-
-        const existingEvaluation =
-          store.evals.find(
-            e =>
-              e.id ===
-              evaluation.id
-          );
-
-
-        if (
-          existingEvaluation
-        ) {
-
-          Object.assign(
-            existingEvaluation,
-            evaluation
-          );
-
-        } else {
-
-          store.evals.push(
-            evaluation
-          );
-        }
-
-
-        /*
-          Événement calendrier
-          lié à l'évaluation
-        */
-
-        store.events =
-          store.events.filter(
-            event =>
-              event.linkedId !==
-              evaluation.id
-          );
-
-
-        store.events.push({
-
-          id:
-            uid('event'),
-
-          title:
-            `Évaluation — ${evaluation.nom}`,
-
-          subjectId:
-            evaluation.subjectId,
-
-          type:
-            'Évaluation',
-
-          date:
-            evaluation.date,
-
-          startTime:
-            '',
-
-          endTime:
-            '',
-
-          priority:
-            'Haute',
-
-          status:
-            'scheduled',
-
-          linkedId:
+      const index =
+        store.evals.findIndex(
+          item =>
+            item.id ===
             evaluation.id
-        });
+        );
 
+      if (index >= 0) {
 
-        saveStore();
+        store.evals[index] =
+          evaluation;
 
-        closeModal();
+      } else {
+
+        store.evals.push(
+          evaluation
+        );
       }
-    );
-}
 
-
-/* =========================================================
-   CALCUL DES MOYENNES
-   ========================================================= */
-
-function computeSubjectAverage(
-  subjectId
-) {
-
-  const list =
-    store.evals.filter(
-      evaluation =>
-        evaluation.subjectId ==
-          subjectId &&
-        evaluation.vraie != null &&
-        !isNaN(
-          Number(
-            evaluation.vraie
-          )
-        )
-    );
-
-
-  if (
-    list.length === 0
-  ) {
-    return NaN;
-  }
-
-
-  let totalPoints = 0;
-
-  let totalCoefficient = 0;
-
-
-  list.forEach(
-    evaluation => {
-
-      const note =
-        Number(
-          evaluation.vraie
+      store.events =
+        store.events.filter(
+          event =>
+            event.linkedId !==
+            evaluation.id
         );
 
-      const coefficient =
-        Number(
-          evaluation.coefficient ??
-          evaluation.coef
-        ) || 1;
+      store.events.push({
 
+        id: uid('event'),
 
-      totalPoints +=
-        note *
-        coefficient;
+        title:
+          `Évaluation — ${
+            evaluation.nom
+          }`,
 
-      totalCoefficient +=
-        coefficient;
-    }
-  );
+        subjectId:
+          evaluation.subjectId,
 
+        type:
+          'Évaluation',
 
-  if (
-    totalCoefficient === 0
-  ) {
-    return NaN;
-  }
+        date:
+          evaluation.date,
 
+        startTime: '',
 
-  return (
-    totalPoints /
-    totalCoefficient
-  );
+        endTime: '',
+
+        priority:
+          'Haute',
+
+        status:
+          'scheduled',
+
+        linkedId:
+          evaluation.id
+      });
+
+      saveStore();
+
+      closeModal();
+    };
 }
-
-
-function computeGeneralAverage() {
-
-  const list =
-    store.evals.filter(
-      evaluation =>
-        evaluation.vraie != null &&
-        !isNaN(
-          Number(
-            evaluation.vraie
-          )
-        )
-    );
-
-
-  if (
-    list.length === 0
-  ) {
-    return NaN;
-  }
-
-
-  let totalPoints = 0;
-
-  let totalCoefficient = 0;
-
-
-  list.forEach(
-    evaluation => {
-
-      const note =
-        Number(
-          evaluation.vraie
-        );
-
-      const coefficient =
-        Number(
-          evaluation.coefficient ??
-          evaluation.coef
-        ) || 1;
-
-
-      totalPoints +=
-        note *
-        coefficient;
-
-      totalCoefficient +=
-        coefficient;
-    }
-  );
-
-
-  if (
-    totalCoefficient === 0
-  ) {
-    return NaN;
-  }
-
-
-  return (
-    totalPoints /
-    totalCoefficient
-  );
-}
-
 
 /* =========================================================
    GRAPHIQUE DES NOTES
-   =========================================================
-
-   IMPORTANT :
-   On n'utilise PAS l'échelle "time".
-   Cela évite l'erreur :
-
-   "This method is not implemented:
-   Check that a complete date adapter is provided."
-
    ========================================================= */
 
 let gradesChart = null;
@@ -4559,15 +4011,7 @@ function renderGradesChart() {
       'gradesChart'
     );
 
-  if (!canvas) {
-    return;
-  }
-
-
-  /*
-    Si Chart.js n'est pas chargé,
-    on ne fait rien.
-  */
+  if (!canvas) return;
 
   if (
     typeof Chart ===
@@ -4581,17 +4025,10 @@ function renderGradesChart() {
     return;
   }
 
-
   const ctx =
     canvas.getContext(
       '2d'
     );
-
-
-  /*
-    Détruire le graphique
-    précédent
-  */
 
   if (gradesChart) {
 
@@ -4600,157 +4037,107 @@ function renderGradesChart() {
     gradesChart = null;
   }
 
+  const datasets =
+    store.subjects.map(
+      subject => {
 
-  /*
-    Récupérer les évaluations
-    possédant une vraie note
-  */
-
-  const evaluations =
-    store.evals
-      .filter(
-        evaluation =>
-          evaluation.vraie != null &&
-          !isNaN(
-            Number(
-              evaluation.vraie
+        const values =
+          store.evals
+            .filter(
+              evaluation =>
+                evaluation.subjectId ===
+                  subject.id &&
+                evaluation.vraie !==
+                  null &&
+                evaluation.vraie !==
+                  undefined
             )
-          )
-      )
-      .sort(
-        (a, b) =>
-          new Date(a.date) -
-          new Date(b.date)
-      );
+            .sort(
+              (a, b) =>
+                new Date(a.date) -
+                new Date(b.date)
+            )
+            .map(
+              evaluation => ({
+                x: evaluation.date,
+                y: Number(
+                  evaluation.vraie
+                )
+              })
+            );
 
+        return {
 
-  const labels =
-    evaluations.map(
-      evaluation =>
-        formatDateReadable(
-          evaluation.date
-        )
+          label:
+            subject.name,
+
+          data:
+            values,
+
+          borderColor:
+            subject.color,
+
+          backgroundColor:
+            subject.color,
+
+          tension:
+            0.25,
+
+          fill:
+            false,
+
+          pointRadius:
+            5
+        };
+      }
     );
-
-
-  const values =
-    evaluations.map(
-      evaluation =>
-        Number(
-          evaluation.vraie
-        )
-    );
-
-
-  /*
-    Création du graphique
-  */
 
   gradesChart =
     new Chart(
       ctx,
       {
-
-        type:
-          'line',
+        type: 'line',
 
         data: {
-
-          labels:
-            labels,
-
-          datasets: [
-
-            {
-
-              label:
-                'Mes notes',
-
-              data:
-                values,
-
-              borderColor:
-                '#ff7fbf',
-
-              backgroundColor:
-                '#ffd0e0',
-
-              borderWidth:
-                3,
-
-              pointRadius:
-                5,
-
-              pointHoverRadius:
-                7,
-
-              fill:
-                false,
-
-              tension:
-                0.25
-            }
-
-          ]
+          datasets
         },
-
 
         options: {
 
-          responsive:
-            true,
-
-
-          maintainAspectRatio:
-            false,
-
+          responsive: true,
 
           plugins: {
 
             legend: {
-
               position:
                 'top'
             }
 
           },
 
-
           scales: {
 
             x: {
 
+              type:
+                'category',
+
               title: {
-
-                display:
-                  true,
-
+                display: true,
                 text:
-                  'Évaluation'
+                  'Évaluations'
               }
 
             },
 
-
             y: {
 
-              min:
-                0,
+              min: 0,
 
-              max:
-                20,
-
-              ticks: {
-
-                stepSize:
-                  2
-              },
+              max: 20,
 
               title: {
-
-                display:
-                  true,
-
+                display: true,
                 text:
                   'Note / 20'
               }
@@ -4758,32 +4145,22 @@ function renderGradesChart() {
             }
 
           }
-
         }
-
       }
     );
-
-
-  /*
-    Résumé des moyennes
-  */
 
   const summary =
     document.getElementById(
       'gradesSummary'
     );
 
-  if (!summary) {
+  if (!summary)
     return;
-  }
-
 
   const general =
     computeGeneralAverage();
 
-
-  let html = `
+  summary.innerHTML = `
 
     <div
       style="
@@ -4800,69 +4177,183 @@ function renderGradesChart() {
         </strong>
 
         <div class="text-muted">
-
           ${
-            isNaN(general)
+            Number.isNaN(
+              general
+            )
               ? '—'
-              : general.toFixed(2) +
-                '/20'
+              : general.toFixed(
+                  2
+                )
           }
-
         </div>
 
       </div>
+
+      ${store.subjects.map(
+        subject => {
+
+          const average =
+            computeSubjectAverage(
+              subject.id
+            );
+
+          return `
+
+            <div>
+
+              <strong>
+                ${escapeHtml(
+                  subject.name
+                )}
+              </strong>
+
+              <div class="text-muted">
+                ${
+                  Number.isNaN(
+                    average
+                  )
+                    ? '—'
+                    : average.toFixed(
+                        2
+                      )
+                }
+              </div>
+
+            </div>
+          `;
+        }
+      ).join('')}
+
+    </div>
   `;
+}
 
+/* =========================================================
+   CALCUL DES MOYENNES
+   ========================================================= */
 
-  store.subjects.forEach(
-    subject => {
+function computeSubjectAverage(
+  subjectId
+) {
 
-      const average =
-        computeSubjectAverage(
-          subject.id
+  const evaluations =
+    store.evals.filter(
+      evaluation =>
+        evaluation.subjectId ==
+          subjectId &&
+        evaluation.vraie !==
+          null &&
+        evaluation.vraie !==
+          undefined
+    );
+
+  if (!evaluations.length)
+    return NaN;
+
+  let points = 0;
+  let coefficients = 0;
+
+  evaluations.forEach(
+    evaluation => {
+
+      const note =
+        Number(
+          evaluation.vraie
         );
 
+      const coefficient =
+        Number(
+          evaluation.coefficient ||
+          evaluation.coef ||
+          1
+        );
 
-      html += `
+      if (
+        !Number.isNaN(note)
+      ) {
 
-        <div>
+        points +=
+          note *
+          coefficient;
 
-          <strong>
-            ${escapeHtml(
-              subject.name
-            )}
-          </strong>
-
-          <div class="text-muted">
-
-            ${
-              isNaN(average)
-                ? '—'
-                : average.toFixed(2) +
-                  '/20'
-            }
-
-          </div>
-
-        </div>
-
-      `;
+        coefficients +=
+          coefficient;
+      }
     }
   );
 
+  if (
+    coefficients === 0
+  )
+    return NaN;
 
-  html += `
-    </div>
-  `;
-
-
-  summary.innerHTML =
-    html;
+  return (
+    points /
+    coefficients
+  );
 }
 
+function computeGeneralAverage() {
+
+  const evaluations =
+    store.evals.filter(
+      evaluation =>
+        evaluation.vraie !==
+          null &&
+        evaluation.vraie !==
+          undefined
+    );
+
+  if (!evaluations.length)
+    return NaN;
+
+  let points = 0;
+
+  let coefficients = 0;
+
+  evaluations.forEach(
+    evaluation => {
+
+      const note =
+        Number(
+          evaluation.vraie
+        );
+
+      const coefficient =
+        Number(
+          evaluation.coefficient ||
+          evaluation.coef ||
+          1
+        );
+
+      if (
+        !Number.isNaN(note)
+      ) {
+
+        points +=
+          note *
+          coefficient;
+
+        coefficients +=
+          coefficient;
+      }
+    }
+  );
+
+  if (
+    coefficients === 0
+  )
+    return NaN;
+
+  return (
+    points /
+    coefficients
+  );
+}
 
 /* =========================================================
-   OUTILS
+   UTILITAIRE MATIÈRE
    ========================================================= */
 
 function getSubjectName(
@@ -4871,8 +4362,8 @@ function getSubjectName(
 
   const subject =
     store.subjects.find(
-      s =>
-        s.id ===
+      item =>
+        item.id ===
         subjectId
     );
 
@@ -4881,7 +4372,6 @@ function getSubjectName(
     : 'Matière inconnue';
 }
 
-
 /* =========================================================
-   FIN DU FICHIER
+   FIN
    ========================================================= */
