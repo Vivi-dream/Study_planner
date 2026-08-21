@@ -1,5 +1,4 @@
 # Study Planner 🌸
 
-Créé et développé par [ton pseudo GitHub].
-
-© 2026 [ton pseudo GitHub] — Tous droits réservés.
+Créé et développé par Vivi-dream
+© 2026 Vivi-dream — Tous droits réservés.
