@@ -15,7 +15,13 @@
 *{box-sizing:border-box}
 body{
   margin:0;
-  background: linear-gradient(180deg,var(--bg),#fff);
+  /* New layered pastel background inspired by the reference: soft multi-color gradients + subtle radial blobs */
+  background:
+    radial-gradient(600px 380px at 10% 15%, rgba(255,208,224,0.65), transparent 18%),
+    radial-gradient(520px 320px at 85% 80%, rgba(217,255,230,0.55), transparent 18%),
+    radial-gradient(420px 300px at 50% 70%, rgba(230,237,255,0.45), transparent 20%),
+    linear-gradient(180deg, #fff7fb 0%, #f2f8ff 45%, #fffdf6 100%);
+  background-attachment: fixed;
   color:var(--text);
   -webkit-font-smoothing:antialiased;
   min-height:100vh;
@@ -30,9 +36,9 @@ body{
   padding:18px 20px;
   position:sticky;
   top:0;
-  background:rgba(255,250,251,0.85);
-  backdrop-filter: blur(6px);
-  border-bottom:1px solid rgba(255,215,230,0.4);
+  background:rgba(255,250,251,0.75);
+  backdrop-filter: blur(8px);
+  border-bottom:1px solid rgba(255,215,230,0.35);
   z-index:30;
 }
 .brand{display:flex;align-items:center;gap:12px}
