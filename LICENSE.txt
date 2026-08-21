@@ -1,0 +1,246 @@
+STUDY PLANNER — LICENCE PROPRIÉTAIRE
+Copyright (c) 2026 Vivi-dream
+Tous droits réservés.
+
+============================================================
+1. OBJET DE LA LICENCE
+============================================================
+
+Cette licence définit les conditions d'utilisation du projet
+« Study Planner ».
+
+Study Planner est un projet de planner scolaire développé sous
+la responsabilité de [TON PSEUDO GITHUB], avec l'utilisation
+possible d'outils d'assistance au développement, notamment des
+outils d'intelligence artificielle.
+
+Cette licence concerne les éléments originaux du projet créés
+par l'auteur ainsi que les éléments pour lesquels l'auteur
+dispose des droits ou autorisations nécessaires.
+
+Les composants, bibliothèques, ressources, contenus ou codes
+provenant de tiers restent soumis à leurs propres licences et
+conditions d'utilisation.
+
+
+============================================================
+2. ÉLÉMENTS ORIGINAUX DU PROJET
+============================================================
+
+Les éléments originaux du projet peuvent notamment comprendre :
+
+- l'organisation générale du projet ;
+- la structure et l'organisation des fonctionnalités ;
+- les textes originaux ;
+- les contenus originaux ;
+- l'identité et la présentation du projet ;
+- les éléments graphiques créés par l'auteur ;
+- les choix de conception et d'interface réalisés par l'auteur ;
+- les fonctionnalités et concepts développés spécifiquement
+  pour Study Planner ;
+- les modifications, améliorations et intégrations réalisées
+  par l'auteur.
+
+Lorsque ces éléments sont protégés par des droits applicables,
+ils ne peuvent pas être réutilisés sans l'autorisation de
+l'auteur.
+
+
+============================================================
+3. UTILISATION AUTORISÉE
+============================================================
+
+Le dépôt GitHub peut être consulté publiquement.
+
+Une personne peut notamment :
+
+- consulter le projet ;
+- lire le code ;
+- étudier son fonctionnement à des fins personnelles ou
+  éducatives ;
+- cloner le dépôt afin de consulter le projet localement.
+
+Cette autorisation de consultation ne constitue pas une
+autorisation de republier ou de redistribuer le projet.
+
+
+============================================================
+4. UTILISATIONS INTERDITES
+============================================================
+
+Sauf autorisation écrite préalable de l'auteur, il est interdit,
+dans la mesure permise par la loi applicable, de :
+
+- republier tout ou partie du projet ;
+- publier une copie du projet sur un autre dépôt ;
+- redistribuer le code source ;
+- vendre le code ou une copie du projet ;
+- commercialiser une copie ou une version dérivée du projet ;
+- intégrer des parties originales du projet dans un autre projet ;
+- créer et distribuer une version dérivée utilisant les éléments
+  originaux du projet ;
+- présenter le projet ou ses éléments originaux comme étant son
+  propre travail ;
+- supprimer les mentions de copyright ou d'attribution ;
+- utiliser l'identité visuelle originale de Study Planner pour
+  faire croire à une affiliation officielle avec le projet.
+
+
+============================================================
+5. CLONAGE DU DÉPÔT
+============================================================
+
+Le fait que le dépôt soit publiquement accessible sur GitHub
+et puisse être cloné ne signifie pas que son contenu peut être
+librement réutilisé ou redistribué.
+
+Le clonage du dépôt est autorisé uniquement pour consulter,
+étudier ou utiliser le projet dans le cadre permis par cette
+licence et par les licences des composants tiers.
+
+Le fait de posséder une copie locale du dépôt ne confère aucun
+droit de propriété sur le projet.
+
+
+============================================================
+6. NOM ET IDENTITÉ DE STUDY PLANNER
+============================================================
+
+Le nom « Study Planner », ainsi que les éléments d'identité
+visuelle originaux associés au projet, ne doivent pas être
+utilisés d'une manière pouvant laisser croire qu'un autre projet
+est officiellement créé, développé ou approuvé par l'auteur.
+
+L'utilisation d'éléments appartenant à des tiers reste soumise
+aux droits et licences de leurs propriétaires respectifs.
+
+
+============================================================
+7. CODE GÉNÉRÉ OU ASSISTÉ PAR INTELLIGENCE ARTIFICIELLE
+============================================================
+
+Une partie du projet peut avoir été créée avec l'aide d'outils
+d'intelligence artificielle ou d'assistance au développement,
+notamment GitHub Copilot.
+
+L'auteur ne revendique pas de droits exclusifs sur les éléments
+pour lesquels il ne dispose pas légalement de tels droits.
+
+Les droits et conditions applicables aux contenus ou codes
+générés, suggérés ou fournis par des outils tiers peuvent dépendre
+des conditions d'utilisation de ces outils et de la législation
+applicable.
+
+Cette licence ne cherche pas à remplacer, modifier ou supprimer
+les droits qui appartiennent légalement à des tiers.
+
+
+============================================================
+8. BIBLIOTHÈQUES ET COMPOSANTS TIERS
+============================================================
+
+Le projet peut utiliser des bibliothèques, frameworks, API,
+polices, icônes, images, scripts ou autres composants appartenant
+à des tiers.
+
+Ces éléments ne sont pas nécessairement couverts par cette
+licence.
+
+Ils restent soumis à leurs propres licences et conditions
+d'utilisation.
+
+L'utilisateur du projet doit respecter les licences applicables
+à ces composants.
+
+
+============================================================
+9. CONTRIBUTIONS
+============================================================
+
+Toute contribution provenant d'une autre personne doit faire
+l'objet d'une autorisation ou d'un accord approprié avant d'être
+intégrée au projet.
+
+Une contribution ne doit pas être intégrée si son utilisation
+violerait les droits d'un tiers.
+
+
+============================================================
+10. AUTORISATION EXCEPTIONNELLE
+============================================================
+
+L'auteur peut accorder une autorisation particulière permettant
+une utilisation qui n'est pas autorisée par cette licence.
+
+Cette autorisation doit être explicite.
+
+Une autorisation donnée à une personne ne signifie pas
+automatiquement qu'elle est accordée à d'autres personnes.
+
+
+============================================================
+11. DROITS DE TIERS
+============================================================
+
+Cette licence ne prétend pas accorder de droits sur :
+
+- les logiciels tiers ;
+- les bibliothèques open source ;
+- les images appartenant à des tiers ;
+- les polices appartenant à des tiers ;
+- les icônes appartenant à des tiers ;
+- les API et services tiers ;
+- les contenus générés ou fournis par des services externes ;
+- tout autre élément dont l'auteur ne possède pas les droits.
+
+Les droits de leurs propriétaires respectifs restent applicables.
+
+
+============================================================
+12. ABSENCE DE GARANTIE
+============================================================
+
+Le projet est fourni « tel quel », dans la mesure permise par
+la loi applicable.
+
+L'auteur ne garantit pas que le projet sera toujours disponible,
+sans erreur ou adapté à un usage particulier.
+
+
+============================================================
+13. CONTACT
+============================================================
+
+Pour demander l'autorisation de réutiliser, modifier,
+redistribuer ou intégrer des éléments originaux de Study Planner :
+
+Contact :
+[TON EMAIL OU MOYEN DE CONTACT]
+
+
+============================================================
+14. COPYRIGHT ET ATTRIBUTION
+============================================================
+
+Les mentions d'auteur présentes dans le projet ne doivent pas
+être supprimées ou modifiées lorsqu'elles concernent des éléments
+sur lesquels l'auteur dispose effectivement de droits.
+
+© 2026 Vivi-dream
+Tous droits réservés pour les éléments originaux du projet
+pour lesquels l'auteur dispose des droits nécessaires.
+
+
+============================================================
+15. ACCEPTATION
+============================================================
+
+En utilisant, copiant, modifiant ou redistribuant des éléments
+du projet, l'utilisateur reconnaît qu'il doit respecter les
+conditions applicables à ces éléments, y compris cette licence
+et les licences des composants tiers.
+
+
+============================================================
+FIN DE LA LICENCE
+============================================================
