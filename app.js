@@ -1,20 +1,40 @@
-    /* =========================================================
+/* =========================================================
    STUDY PLANNER - app.js
-   Version: robust rewrite
-   Interface en français
-   Persistance via localStorage (clé: studyPlannerData_v1)
+   Interface française
+   Persistance : localStorage
    Méthode de révision : 2,3,5,7
    ========================================================= */
 
-/* ===========================
+
+/* =========================================================
    UTILITAIRES
-   =========================== */
-const uid = (prefix = 'id') => `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
+   ========================================================= */
+
+const uid = (prefix = 'id') =>
+  `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 
 const today = () => {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
   return d;
+};
+
+const formatDate = (d) => {
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return '';
+  return dt.toISOString().slice(0, 10);
+};
+
+const formatDateReadable = (d) => {
+  const dt = new Date(d);
+
+  if (isNaN(dt.getTime())) return '';
+
+  return dt.toLocaleDateString('fr-FR', {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short'
+  });
 };
 
 const addDays = (d, n) => {
@@ -23,26 +43,9 @@ const addDays = (d, n) => {
   return t;
 };
 
-const formatDate = (d) => {
-  if (!d) return '';
-  const dt = new Date(d);
-  if (isNaN(dt.getTime())) return '';
-  return dt.toISOString().slice(0, 10);
-};
-
-const formatDateReadable = (d) => {
-  if (!d) return '';
-  const dt = new Date(d);
-  if (isNaN(dt.getTime())) return '';
-  return dt.toLocaleDateString('fr-FR', {
-    weekday: 'short',
-    day: '2-digit',
-    month: 'short'
-  });
-};
-
 function escapeHtml(value) {
   if (value === null || value === undefined) return '';
+
   return String(value)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -51,20 +54,34 @@ function escapeHtml(value) {
     .replace(/'/g, '&#039;');
 }
 
-function safeText(v, fallback = '') {
-  return v === undefined || v === null ? fallback : String(v);
-}
 
-/* ===========================
-   DONNÉES / STORE
-   =========================== */
+/* =========================================================
+   DONNÉES
+   ========================================================= */
+
 const STORAGE_KEY = 'studyPlannerData_v1';
 
 const defaultSubjects = [
-  { id: 'matiere_math', name: 'Mathématiques', color: '#ffd0e0' },
-  { id: 'matiere_fr', name: 'Français', color: '#e9d9ff' },
-  { id: 'matiere_hg', name: 'Histoire', color: '#d6e8ff' },
-  { id: 'matiere_en', name: 'Anglais', color: '#d9ffe6' }
+  {
+    id: 'matiere_math',
+    name: 'Mathématiques',
+    color: '#ffd0e0'
+  },
+  {
+    id: 'matiere_fr',
+    name: 'Français',
+    color: '#e9d9ff'
+  },
+  {
+    id: 'matiere_hg',
+    name: 'Histoire',
+    color: '#d6e8ff'
+  },
+  {
+    id: 'matiere_en',
+    name: 'Anglais',
+    color: '#d9ffe6'
+  }
 ];
 
 let store = {
@@ -77,56 +94,19 @@ let store = {
   photos: [],
   notes: [],
   evals: [],
-  settings: { weekStart: 'monday' }
+  settings: {
+    weekStart: 'monday'
+  }
 };
 
-/* ===========================
-   LOAD / SAVE / RESET
-   =========================== */
-function loadStore() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) {
-    resetStore();
-    return;
-  }
 
-  try {
-    const parsed = JSON.parse(raw);
+/* =========================================================
+   CHARGEMENT / SAUVEGARDE
+   ========================================================= */
 
-    // Merge parsed into default shaped store to preserve new fields
-    store = Object.assign({}, store, parsed || {});
-
-    // Validate arrays
-    store.subjects = Array.isArray(store.subjects) ? store.subjects : defaultSubjects.slice();
-    store.classes = Array.isArray(store.classes) ? store.classes : [];
-    store.events = Array.isArray(store.events) ? store.events : [];
-    store.tasks = Array.isArray(store.tasks) ? store.tasks : [];
-    store.lessons = Array.isArray(store.lessons) ? store.lessons : [];
-    store.revisions = Array.isArray(store.revisions) ? store.revisions : [];
-    store.photos = Array.isArray(store.photos) ? store.photos : [];
-    store.notes = Array.isArray(store.notes) ? store.notes : [];
-    store.evals = Array.isArray(store.evals) ? store.evals : [];
-    store.settings = store.settings && typeof store.settings === 'object' ? store.settings : { weekStart: 'monday' };
-
-  } catch (err) {
-    console.error('Erreur parsing store, reset to defaults:', err);
-    // If corrupted, reset and persist defaults
-    resetStore();
-  }
-}
-
-function saveStore() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
-  } catch (err) {
-    console.error('Erreur lors de la sauvegarde du store:', err);
-  }
-  renderAll();
-}
-
-function resetStore() {
-  store = {
-    subjects: defaultSubjects.slice(),
+function createDefaultStore() {
+  return {
+    subjects: defaultSubjects.map(s => ({ ...s })),
     classes: [],
     events: [],
     tasks: [],
@@ -135,534 +115,4773 @@ function resetStore() {
     photos: [],
     notes: [],
     evals: [],
-    settings: { weekStart: 'monday' }
+    settings: {
+      weekStart: 'monday'
+    }
   };
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
-  } catch (err) {
-    console.error('Erreur lors de l\'initialisation du store:', err);
+}
+
+function loadStore() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+
+  if (!raw) {
+    store = createDefaultStore();
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(store)
+    );
+    return;
   }
+
+  try {
+    const parsed = JSON.parse(raw);
+
+    store = {
+      subjects: Array.isArray(parsed.subjects)
+        ? parsed.subjects
+        : defaultSubjects.map(s => ({ ...s })),
+
+      classes: Array.isArray(parsed.classes)
+        ? parsed.classes
+        : [],
+
+      events: Array.isArray(parsed.events)
+        ? parsed.events
+        : [],
+
+      tasks: Array.isArray(parsed.tasks)
+        ? parsed.tasks
+        : [],
+
+      lessons: Array.isArray(parsed.lessons)
+        ? parsed.lessons
+        : [],
+
+      revisions: Array.isArray(parsed.revisions)
+        ? parsed.revisions
+        : [],
+
+      photos: Array.isArray(parsed.photos)
+        ? parsed.photos
+        : [],
+
+      notes: Array.isArray(parsed.notes)
+        ? parsed.notes
+        : [],
+
+      evals: Array.isArray(parsed.evals)
+        ? parsed.evals
+        : [],
+
+      settings: parsed.settings || {
+        weekStart: 'monday'
+      }
+    };
+
+  } catch (error) {
+    console.error(
+      'Erreur lors du chargement des données :',
+      error
+    );
+
+    store = createDefaultStore();
+  }
+}
+
+function saveStore() {
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify(store)
+  );
+
   renderAll();
 }
 
-/* ===========================
-   MODAL UTIL
-   =========================== */
-function openModal(contentHtml) {
-  const modal = document.getElementById('modal');
-  if (!modal) return;
+function resetStore() {
+  store = createDefaultStore();
 
-  modal.innerHTML = `<div class="card">${contentHtml}</div>`;
-  modal.classList.remove('hidden');
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify(store)
+  );
 
-  // attach single click handler to close when clicking backdrop
-  modal.onclick = (ev) => {
-    if (ev.target === modal) closeModal();
-  };
+  renderAll();
 }
 
-function closeModal() {
-  const modal = document.getElementById('modal');
-  if (!modal) return;
-  modal.classList.add('hidden');
-  modal.innerHTML = '';
-  modal.onclick = null;
-}
 
-/* ===========================
+/* =========================================================
    INITIALISATION
-   =========================== */
+   ========================================================= */
+
 document.addEventListener('DOMContentLoaded', () => {
+
   loadStore();
+
   initNav();
   initButtons();
+
   renderAll();
 });
 
-/* ===========================
-   NAVIGATION & HEADER ACTIONS
-   =========================== */
+
+/* =========================================================
+   NAVIGATION
+   ========================================================= */
+
 function initNav() {
-  const navButtons = document.querySelectorAll('.nav-btn');
-  const tabs = document.querySelectorAll('.tab-content');
-  const dashboard = document.getElementById('dashboard');
+
+  const navButtons =
+    document.querySelectorAll('.nav-btn');
+
+  const tabs =
+    document.querySelectorAll('.tab-content');
+
+  const dashboard =
+    document.getElementById('dashboard');
 
   navButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const tabId = btn.dataset?.tab;
-      if (!tabId) return;
 
-      const target = document.getElementById(tabId);
+    btn.addEventListener('click', () => {
+
+      const tabId = btn.dataset.tab;
+
+      const target =
+        document.getElementById(tabId);
+
       if (!target) {
-        console.error('Onglet introuvable:', tabId);
+        console.error(
+          'Onglet introuvable :',
+          tabId
+        );
         return;
       }
 
-      navButtons.forEach(b => b.classList.remove('active'));
+      navButtons.forEach(b =>
+        b.classList.remove('active')
+      );
+
       btn.classList.add('active');
 
-      tabs.forEach(tab => tab.classList.add('hidden'));
+      tabs.forEach(tab =>
+        tab.classList.add('hidden')
+      );
+
       target.classList.remove('hidden');
 
-      if (dashboard) dashboard.style.display = tabId === 'calendrier' ? '' : 'none';
+      if (dashboard) {
+        dashboard.style.display =
+          tabId === 'calendrier'
+            ? ''
+            : 'none';
+      }
     });
+
   });
 
-  // export
-  document.getElementById('exportBtn')?.addEventListener('click', () => {
-    try {
-      const data = JSON.stringify(store, null, 2);
-      const blob = new Blob([data], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'study-planner-export.json';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('Erreur export:', err);
-      alert('Impossible d\'exporter les données.');
-    }
-  });
 
-  // import
-  const importInput = document.getElementById('importFile');
+  /* =========================
+     EXPORT
+     ========================= */
+
+  const exportBtn =
+    document.getElementById('exportBtn');
+
+  if (exportBtn) {
+
+    exportBtn.addEventListener(
+      'click',
+      () => {
+
+        const data =
+          JSON.stringify(
+            store,
+            null,
+            2
+          );
+
+        const blob =
+          new Blob(
+            [data],
+            {
+              type: 'application/json'
+            }
+          );
+
+        const url =
+          URL.createObjectURL(blob);
+
+        const a =
+          document.createElement('a');
+
+        a.href = url;
+
+        a.download =
+          'study-planner-export.json';
+
+        document.body.appendChild(a);
+
+        a.click();
+
+        a.remove();
+
+        URL.revokeObjectURL(url);
+      }
+    );
+  }
+
+
+  /* =========================
+     IMPORT
+     ========================= */
+
+  const importInput =
+    document.getElementById('importFile');
+
   if (importInput) {
-    importInput.addEventListener('change', (e) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        try {
-          const parsed = JSON.parse(evt.target.result);
-          if (!parsed || typeof parsed !== 'object') throw new Error('Format invalide');
-          // basic validation & assign
-          store.subjects = Array.isArray(parsed.subjects) ? parsed.subjects : defaultSubjects.slice();
-          store.classes = Array.isArray(parsed.classes) ? parsed.classes : [];
-          store.events = Array.isArray(parsed.events) ? parsed.events : [];
-          store.tasks = Array.isArray(parsed.tasks) ? parsed.tasks : [];
-          store.lessons = Array.isArray(parsed.lessons) ? parsed.lessons : [];
-          store.revisions = Array.isArray(parsed.revisions) ? parsed.revisions : [];
-          store.photos = Array.isArray(parsed.photos) ? parsed.photos : [];
-          store.notes = Array.isArray(parsed.notes) ? parsed.notes : [];
-          store.evals = Array.isArray(parsed.evals) ? parsed.evals : [];
-          store.settings = parsed.settings && typeof parsed.settings === 'object' ? parsed.settings : { weekStart: 'monday' };
 
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
-          renderAll();
-          alert('Importation réussie !');
-        } catch (err) {
-          console.error('Import error:', err);
-          alert('Fichier JSON invalide.');
-        }
-      };
-      reader.readAsText(file);
-      // clear input so same file can be reimported if needed
-      importInput.value = '';
-    });
+    importInput.addEventListener(
+      'change',
+      (e) => {
+
+        const file =
+          e.target.files[0];
+
+        if (!file) return;
+
+        const reader =
+          new FileReader();
+
+        reader.onload =
+          (event) => {
+
+            try {
+
+              const data =
+                JSON.parse(
+                  event.target.result
+                );
+
+              store = {
+                ...createDefaultStore(),
+                ...data
+              };
+
+              saveStore();
+
+              alert(
+                'Importation réussie !'
+              );
+
+            } catch (error) {
+
+              console.error(error);
+
+              alert(
+                'Fichier JSON invalide.'
+              );
+            }
+          };
+
+        reader.readAsText(file);
+      }
+    );
   }
 }
 
-/* ===========================
-   BOUTONS & ACTIONS
-   =========================== */
-function initButtons() {
-  document.getElementById('addTaskBtn')?.addEventListener('click', () => openTaskModal());
-  document.getElementById('addLessonBtn')?.addEventListener('click', () => openLessonModal());
-  document.getElementById('addEvalBtn')?.addEventListener('click', () => openEvalModal());
-  document.getElementById('addEventFromCal')?.addEventListener('click', () => openEventModal());
-  document.getElementById('prevWeek')?.addEventListener('click', () => changeWeek(-7));
-  document.getElementById('nextWeek')?.addEventListener('click', () => changeWeek(7));
-  document.getElementById('subjectFilter')?.addEventListener('change', () => renderCalendar());
 
-  // manage subjects button (if present)
-  const manageBtn = document.getElementById('manageSubjectsBtn');
-  if (manageBtn) manageBtn.addEventListener('click', () => manageSubjectsModal());
+/* =========================================================
+   BOUTONS
+   ========================================================= */
+
+function initButtons() {
+
+  const addTaskBtn =
+    document.getElementById('addTaskBtn');
+
+  if (addTaskBtn) {
+    addTaskBtn.addEventListener(
+      'click',
+      () => openTaskModal()
+    );
+  }
+
+
+  const addLessonBtn =
+    document.getElementById('addLessonBtn');
+
+  if (addLessonBtn) {
+    addLessonBtn.addEventListener(
+      'click',
+      () => openLessonModal()
+    );
+  }
+
+
+  const addEvalBtn =
+    document.getElementById('addEvalBtn');
+
+  if (addEvalBtn) {
+    addEvalBtn.addEventListener(
+      'click',
+      () => openEvalModal()
+    );
+  }
+
+
+  const addEventBtn =
+    document.getElementById('addEventFromCal');
+
+  if (addEventBtn) {
+    addEventBtn.addEventListener(
+      'click',
+      () => openEventModal()
+    );
+  }
+
+
+  const prevWeek =
+    document.getElementById('prevWeek');
+
+  if (prevWeek) {
+    prevWeek.addEventListener(
+      'click',
+      () => changeWeek(-7)
+    );
+  }
+
+
+  const nextWeek =
+    document.getElementById('nextWeek');
+
+  if (nextWeek) {
+    nextWeek.addEventListener(
+      'click',
+      () => changeWeek(7)
+    );
+  }
+
+
+  const subjectFilter =
+    document.getElementById('subjectFilter');
+
+  if (subjectFilter) {
+    subjectFilter.addEventListener(
+      'change',
+      () => renderCalendar()
+    );
+  }
 }
 
-/* ===========================
-   RENDU GLOBAL
-   =========================== */
-let currentWeekStart = startOfWeek(new Date());
-let gradesChart = null;
+
+/* =========================================================
+   RENDER GLOBAL
+   ========================================================= */
 
 function renderAll() {
+
   populateSubjectFilter();
+
   renderDashboard();
+
   renderCalendar();
+
   renderTasks();
+
   renderLessons();
+
   renderEvals();
+
   renderGradesChart();
 }
 
-/* ===========================
-   FILTRE MATIÈRES
-   =========================== */
+
+/* =========================================================
+   MATIÈRES
+   ========================================================= */
+
 function populateSubjectFilter() {
-  const select = document.getElementById('subjectFilter');
+
+  const select =
+    document.getElementById(
+      'subjectFilter'
+    );
+
   if (!select) return;
-  select.innerHTML = '<option value="all">Toutes les matières</option>';
-  (store.subjects || []).forEach(s => {
-    const opt = document.createElement('option');
-    opt.value = s.id;
-    opt.textContent = s.name || 'Sans nom';
-    select.appendChild(opt);
+
+  select.innerHTML =
+    '<option value="all">Toutes les matières</option>';
+
+  store.subjects.forEach(subject => {
+
+    const option =
+      document.createElement('option');
+
+    option.value =
+      subject.id;
+
+    option.textContent =
+      subject.name;
+
+    select.appendChild(option);
   });
 }
 
-/* ===========================
-   CALENDRIER (simplifié & safe)
-   =========================== */
+
+/* =========================================================
+   CALENDRIER
+   ========================================================= */
+
+let currentWeekStart =
+  startOfWeek(new Date());
+
 function startOfWeek(date) {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day; // monday start
-  const monday = new Date(d);
-  monday.setDate(d.getDate() + diff);
-  monday.setHours(0, 0, 0, 0);
+
+  const d =
+    new Date(date);
+
+  const day =
+    d.getDay();
+
+  const diff =
+    day === 0
+      ? -6
+      : 1 - day;
+
+  const monday =
+    new Date(d);
+
+  monday.setDate(
+    d.getDate() + diff
+  );
+
+  monday.setHours(
+    0,
+    0,
+    0,
+    0
+  );
+
   return monday;
 }
 
 function changeWeek(days) {
-  currentWeekStart = addDays(currentWeekStart, days);
+
+  currentWeekStart =
+    addDays(
+      currentWeekStart,
+      days
+    );
+
   renderCalendar();
 }
 
 function weekLabel() {
-  const start = currentWeekStart;
-  const end = addDays(start, 6);
-  const options = { day: '2-digit', month: 'short' };
-  return `${start.toLocaleDateString('fr-FR', options)} — ${end.toLocaleDateString('fr-FR', options)}`;
+
+  const start =
+    currentWeekStart;
+
+  const end =
+    addDays(
+      start,
+      6
+    );
+
+  const options = {
+    day: '2-digit',
+    month: 'short'
+  };
+
+  return `${start.toLocaleDateString(
+    'fr-FR',
+    options
+  )} — ${end.toLocaleDateString(
+    'fr-FR',
+    options
+  )}`;
 }
 
+
+/* =========================================================
+   RENDU DU CALENDRIER
+   ========================================================= */
+
 function renderCalendar() {
-  const weekLabelEl = document.getElementById('weekLabel');
-  const container = document.getElementById('weekCalendar');
-  if (weekLabelEl) weekLabelEl.textContent = weekLabel();
+
+  const weekLabelEl =
+    document.getElementById(
+      'weekLabel'
+    );
+
+  const container =
+    document.getElementById(
+      'weekCalendar'
+    );
+
   if (!container) return;
+
+  if (weekLabelEl) {
+    weekLabelEl.textContent =
+      weekLabel();
+  }
+
   container.innerHTML = '';
 
-  // times column
-  const timesCol = document.createElement('div');
-  timesCol.className = 'time-col';
-  const slotHours = [...Array(14)].map((_, i) => 7 + i);
-  timesCol.innerHTML = slotHours.map(h => `<div class="time">${h}h</div>`).join('');
-  container.appendChild(timesCol);
 
-  const filterEl = document.getElementById('subjectFilter');
-  const filter = filterEl ? filterEl.value : 'all';
+  /* =========================
+     COLONNE DES HEURES
+     ========================= */
 
-  for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-    const day = addDays(currentWeekStart, dayIndex);
-    const dateString = formatDate(day);
-    const dayCol = document.createElement('div');
-    dayCol.className = 'day-col';
-    dayCol.dataset.date = dateString;
+  const timesCol =
+    document.createElement('div');
 
-    // header
-    const header = document.createElement('div');
-    header.className = 'day-header';
-    const now = new Date();
-    const isToday = day.getDate() === now.getDate() && day.getMonth() === now.getMonth() && day.getFullYear() === now.getFullYear();
-    const dayName = day.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' });
-    header.innerHTML = `<div>${dayName}</div><div class="text-muted">${isToday ? "Aujourd'hui" : ''}</div>`;
-    dayCol.appendChild(header);
+  timesCol.className =
+    'time-col';
 
-    // gather events for this day
-    const classEvents = (store.classes || [])
-      .filter(c => Number(c.jour) === day.getDay())
-      .map(c => ({
-        id: c.id,
-        title: c.matiereName || getSubjectName(c.subjectId),
-        subjectId: c.subjectId,
-        type: 'Cours',
-        date: dateString,
-        startTime: c.start || '',
-        endTime: c.end || '',
-        priority: null,
-        status: 'scheduled',
-        linkedId: c.id,
-        isClass: true
-      }));
+  const slotHours =
+    Array.from(
+      { length: 14 },
+      (_, i) => 7 + i
+    );
 
-    const dayEvents = (store.events || []).filter(ev => ev.date === dateString);
-    const revisions = (store.revisions || []).filter(rv => rv.date === dateString).map(rv => ({
-      id: rv.id,
-      title: rv.title,
-      subjectId: rv.subjectId,
-      type: 'Révision',
-      date: rv.date,
-      startTime: rv.startTime || '',
-      endTime: rv.endTime || '',
-      priority: null,
-      status: rv.status || 'scheduled',
-      linkedId: rv.lessonId,
-      isRevision: true
-    }));
+  timesCol.innerHTML =
+    slotHours
+      .map(hour =>
+        `<div class="time">${hour}h</div>`
+      )
+      .join('');
 
-    const allEvents = [...classEvents, ...dayEvents, ...revisions];
-    const shownEvents = filter === 'all' ? allEvents : allEvents.filter(e => e.subjectId === filter);
+  container.appendChild(
+    timesCol
+  );
 
-    shownEvents.forEach(event => {
-      const slot = document.createElement('div');
-      slot.className = 'slot small';
-      const subj = (store.subjects || []).find(s => s.id === event.subjectId);
-      const background = subj ? subj.color : '#ffe6f3';
-      slot.style.background = background;
 
-      const statusText = event.status === 'done' ? ' • Terminé' : '';
-      const badge = `<span class="badge" style="background:rgba(0,0,0,0.08);color:#6b4956;font-weight:700;padding:4px 8px;border-radius:999px;font-size:12px;">${escapeHtml(event.type || 'Événement')}</span>`;
+  const filterEl =
+    document.getElementById(
+      'subjectFilter'
+    );
+
+  const filter =
+    filterEl
+      ? filterEl.value
+      : 'all';
+
+
+  /* =========================
+     7 JOURS
+     ========================= */
+
+  for (
+    let dayIndex = 0;
+    dayIndex < 7;
+    dayIndex++
+  ) {
+
+    const day =
+      addDays(
+        currentWeekStart,
+        dayIndex
+      );
+
+    const dayDate =
+      formatDate(day);
+
+    const dayCol =
+      document.createElement('div');
+
+    dayCol.className =
+      'day-col';
+
+    dayCol.dataset.date =
+      dayDate;
+
+
+    /* HEADER */
+
+    const header =
+      document.createElement('div');
+
+    header.className =
+      'day-header';
+
+    const isToday =
+      dayDate === formatDate(
+        new Date()
+      );
+
+    header.innerHTML = `
+      <div>
+        ${day.toLocaleDateString(
+          'fr-FR',
+          {
+            weekday: 'short',
+            day: '2-digit',
+            month: 'short'
+          }
+        )}
+      </div>
+
+      <div class="text-muted">
+        ${isToday ? "Aujourd'hui" : ''}
+      </div>
+    `;
+
+    dayCol.appendChild(
+      header
+    );
+
+
+    /* =========================
+       COURS RÉCURRENTS
+       ========================= */
+
+    const classEvents =
+      store.classes
+        .filter(
+          c =>
+            Number(c.jour) ===
+            day.getDay()
+        )
+        .map(c => ({
+
+          id: c.id,
+
+          title:
+            c.matiereName ||
+            getSubjectName(
+              c.subjectId
+            ),
+
+          subjectId:
+            c.subjectId,
+
+          type:
+            'Cours',
+
+          date:
+            dayDate,
+
+          startTime:
+            c.start || '',
+
+          endTime:
+            c.end || '',
+
+          priority:
+            null,
+
+          status:
+            'scheduled',
+
+          linkedId:
+            c.id,
+
+          isClass:
+            true
+        }));
+
+
+    /* =========================
+       ÉVÉNEMENTS
+       ========================= */
+
+    const dayEvents =
+      store.events.filter(
+        event =>
+          event.date ===
+          dayDate
+      );
+
+
+    /* =========================
+       RÉVISIONS
+       ========================= */
+
+    const revisions =
+      store.revisions
+        .filter(
+          revision =>
+            revision.date ===
+            dayDate
+        )
+        .map(revision => ({
+
+          ...revision,
+
+          type:
+            'Révision'
+        }));
+
+
+    const allEvents = [
+      ...classEvents,
+      ...dayEvents,
+      ...revisions
+    ];
+
+
+    const shown =
+      filter === 'all'
+        ? allEvents
+        : allEvents.filter(
+            event =>
+              event.subjectId ===
+              filter
+          );
+
+
+    /* =========================
+       AFFICHAGE
+       ========================= */
+
+    shown.forEach(event => {
+
+      const slot =
+        document.createElement('div');
+
+      slot.className =
+        'slot small';
+
+      const subject =
+        store.subjects.find(
+          s =>
+            s.id ===
+            event.subjectId
+        );
+
+      const background =
+        subject
+          ? subject.color
+          : '#ffe6f3';
+
+      slot.style.background =
+        background;
+
+
+      const statusText =
+        event.status === 'done'
+          ? ' • Terminé'
+          : '';
+
 
       slot.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:5px;">
-          <strong>${escapeHtml(event.title)}</strong>
-          ${badge}
+        <div style="
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+          gap:6px;
+        ">
+
+          <strong>
+            ${escapeHtml(
+              event.title ||
+              'Événement'
+            )}
+          </strong>
+
+          <span
+            class="badge"
+            style="
+              background:rgba(0,0,0,0.08);
+              color:#6b4956;
+              font-weight:700;
+              padding:4px 8px;
+              border-radius:999px;
+              font-size:12px;
+            "
+          >
+            ${escapeHtml(
+              event.type ||
+              'Événement'
+            )}
+          </span>
+
         </div>
+
         <div class="meta">
-          ${event.startTime ? escapeHtml(event.startTime) + ' • ' : ''}
-          ${event.endTime ? escapeHtml(event.endTime) + ' • ' : ''}
-          ${event.priority ? 'Priorité: ' + escapeHtml(event.priority) : ''}
+          ${
+            event.startTime
+              ? escapeHtml(
+                  event.startTime
+                )
+              : ''
+          }
+
+          ${
+            event.priority
+              ? ' • Priorité : ' +
+                escapeHtml(
+                  event.priority
+                )
+              : ''
+          }
+
           ${statusText}
         </div>
       `;
 
-      slot.addEventListener('click', () => {
-        if (event.isRevision) openRevisionViewer(event.id);
-        else if (event.isClass) openClassViewer(event);
-        else openEventViewer(event);
-      });
 
-      dayCol.appendChild(slot);
+      slot.addEventListener(
+        'click',
+        () =>
+          openEventViewer(
+            event
+          )
+      );
+
+
+      dayCol.appendChild(
+        slot
+      );
     });
 
-    container.appendChild(dayCol);
+
+    container.appendChild(
+      dayCol
+    );
   }
 
   renderDashboardMini();
 }
 
-/* ===========================
-   DASHBOARD
-   =========================== */
-function renderDashboard() {
-  const dash = document.getElementById('dashboard');
-  if (!dash) return;
-  dash.innerHTML = '';
 
-  const left = document.createElement('div');
-  left.className = 'card';
+/* =========================================================
+   DASHBOARD
+   ========================================================= */
+
+function renderDashboard() {
+
+  const dashboard =
+    document.getElementById(
+      'dashboard'
+    );
+
+  if (!dashboard) return;
+
+  dashboard.innerHTML = '';
+
+
+  /* =========================
+     CARTE GAUCHE
+     ========================= */
+
+  const left =
+    document.createElement('div');
+
+  left.className =
+    'card';
+
   left.innerHTML = `
     <h2>Aperçu</h2>
-    <div class="text-muted">Aujourd'hui : ${new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long' })}</div>
-    <div id="todayClasses" style="margin-top:12px"></div>
-    <div id="upcomingDeadlines" style="margin-top:12px"></div>
-  `;
-  dash.appendChild(left);
 
-  const right = document.createElement('div');
-  right.className = 'card';
+    <div class="text-muted">
+      Aujourd'hui :
+      ${new Date().toLocaleDateString(
+        'fr-FR',
+        {
+          weekday: 'long',
+          day: '2-digit',
+          month: 'long'
+        }
+      )}
+    </div>
+
+    <div
+      id="todayClasses"
+      style="margin-top:12px"
+    ></div>
+
+    <div
+      id="upcomingDeadlines"
+      style="margin-top:12px"
+    ></div>
+  `;
+
+  dashboard.appendChild(
+    left
+  );
+
+
+  /* =========================
+     CARTE DROITE
+     ========================= */
+
+  const right =
+    document.createElement('div');
+
+  right.className =
+    'card';
+
+  const remainingTasks =
+    store.tasks.filter(
+      task =>
+        task.status !== 'done'
+    ).length;
+
   right.innerHTML = `
     <h3>Récapitulatif</h3>
-    <div style="display:flex;gap:8px;margin-top:10px;">
-      <div style="flex:1"><strong>${(store.tasks || []).filter(t => t.status !== 'done').length}</strong><div class="text-muted">Tâches restantes</div></div>
-      <div style="flex:1"><strong>${(store.evals || []).length}</strong><div class="text-muted">Évaluations</div></div>
-      <div style="flex:1"><strong>${(store.subjects || []).length}</strong><div class="text-muted">Matières</div></div>
+
+    <div
+      style="
+        display:flex;
+        gap:8px;
+        margin-top:10px;
+      "
+    >
+
+      <div style="flex:1">
+        <strong>
+          ${remainingTasks}
+        </strong>
+
+        <div class="text-muted">
+          Tâches restantes
+        </div>
+      </div>
+
+      <div style="flex:1">
+        <strong>
+          ${store.evals.length}
+        </strong>
+
+        <div class="text-muted">
+          Évaluations
+        </div>
+      </div>
+
+      <div style="flex:1">
+        <strong>
+          ${store.subjects.length}
+        </strong>
+
+        <div class="text-muted">
+          Matières
+        </div>
+      </div>
+
     </div>
-    <div style="margin-top:12px"><strong>Moyenne générale</strong><div id="avgGeneral" class="text-muted"></div></div>
+
+    <div style="margin-top:12px">
+
+      <strong>
+        Moyenne générale
+      </strong>
+
+      <div
+        id="avgGeneral"
+        class="text-muted"
+      ></div>
+
+    </div>
   `;
-  dash.appendChild(right);
 
-  // today classes
-  const todayClassesEl = left.querySelector('#todayClasses');
-  const todayDay = new Date().getDay();
-  const classesToday = (store.classes || []).filter(c => Number(c.jour) === todayDay);
+  dashboard.appendChild(
+    right
+  );
+
+
+  /* =========================
+     COURS DU JOUR
+     ========================= */
+
+  const todayClasses =
+    store.classes.filter(
+      c =>
+        Number(c.jour) ===
+        new Date().getDay()
+    );
+
+  const todayClassesEl =
+    left.querySelector(
+      '#todayClasses'
+    );
+
   if (todayClassesEl) {
-    if (classesToday.length === 0) {
-      todayClassesEl.innerHTML = `<div class="text-muted">Aucun cours aujourd'hui</div>`;
-    } else {
-      todayClassesEl.innerHTML = classesToday
-        .sort((a, b) => String(a.start || '').localeCompare(String(b.start || '')))
-        .map(c => {
-          const subject = (store.subjects || []).find(s => s.id === c.subjectId);
-          const color = subject ? subject.color : '#ffd0e0';
-          return `
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;border-radius:10px;background:linear-gradient(180deg,rgba(255,255,255,0.6),rgba(255,250,251,0.6));">
-              <div>
-                <strong>${escapeHtml(subject ? subject.name : (c.matiereName || ''))}</strong>
-                <div class="text-muted">${escapeHtml(c.start || '')} - ${escapeHtml(c.end || '')}</div>
-              </div>
-              <div style="width:12px;height:12px;border-radius:4px;background:${color};"></div>
-            </div>
-          `;
-        })
-        .join('');
-    }
-  }
 
-  // upcoming deadlines
-  const upcomingEl = left.querySelector('#upcomingDeadlines');
-  const nowDate = formatDate(today());
-  const upcoming = (store.tasks || []).filter(t => t.status !== 'done' && t.date >= nowDate).sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 5);
-  if (upcomingEl) {
-    upcomingEl.innerHTML = `<h4>Échéances à venir</h4>` + (upcoming.length ? upcoming.map(task => {
-      const subject = (store.subjects || []).find(s => s.id === task.subjectId);
-      return `<div style="display:flex;justify-content:space-between;padding:8px;border-radius:8px;background:var(--muted);">
-          <div>
-            <strong>${escapeHtml(task.title)}</strong>
-            <div class="text-muted">${subject ? escapeHtml(subject.name) : 'Matière inconnue'} • ${formatDateReadable(task.date)}</div>
+    todayClassesEl.innerHTML =
+      todayClasses.length
+
+        ? todayClasses
+            .map(c => {
+
+              const subject =
+                store.subjects.find(
+                  s =>
+                    s.id ===
+                    c.subjectId
+                );
+
+              return `
+                <div
+                  style="
+                    display:flex;
+                    justify-content:space-between;
+                    align-items:center;
+                    padding:8px;
+                    border-radius:10px;
+                    background:
+                      linear-gradient(
+                        180deg,
+                        rgba(
+                          255,
+                          255,
+                          255,
+                          0.6
+                        ),
+                        rgba(
+                          255,
+                          250,
+                          251,
+                          0.6
+                        )
+                      );
+                  "
+                >
+
+                  <div>
+
+                    <strong>
+                      ${
+                        subject
+                          ? escapeHtml(
+                              subject.name
+                            )
+                          : escapeHtml(
+                              c.matiereName ||
+                              'Cours'
+                            )
+                      }
+                    </strong>
+
+                    <div class="text-muted">
+                      ${escapeHtml(
+                        c.start || ''
+                      )}
+                      -
+                      ${escapeHtml(
+                        c.end || ''
+                      )}
+                    </div>
+
+                  </div>
+
+                  <div
+                    style="
+                      width:12px;
+                      height:12px;
+                      border-radius:4px;
+                      background:
+                        ${
+                          subject
+                            ? subject.color
+                            : '#ffd0e0'
+                        };
+                    "
+                  ></div>
+
+                </div>
+              `;
+            })
+            .join('')
+
+        : `
+          <div class="text-muted">
+            Aucun cours aujourd'hui
           </div>
-          <div class="text-muted">${task.priority ? escapeHtml(task.priority) : ''}</div>
-        </div>`;
-    }).join('') : `<div class="text-muted">Aucune échéance prochaine</div>`);
+        `;
   }
 
-  const avgEl = document.getElementById('avgGeneral');
+
+  /* =========================
+     ÉCHÉANCES
+     ========================= */
+
+  const upcomingEl =
+    left.querySelector(
+      '#upcomingDeadlines'
+    );
+
+  const upcoming =
+    store.tasks
+      .filter(
+        task =>
+          task.status !== 'done' &&
+          task.date &&
+          new Date(task.date) >=
+            today()
+      )
+      .sort(
+        (a, b) =>
+          new Date(a.date) -
+          new Date(b.date)
+      )
+      .slice(0, 5);
+
+  if (upcomingEl) {
+
+    upcomingEl.innerHTML =
+      `
+        <h4>
+          Échéances à venir
+        </h4>
+      ` +
+
+      (
+        upcoming.length
+
+          ? upcoming
+              .map(task => {
+
+                const subject =
+                  store.subjects.find(
+                    s =>
+                      s.id ===
+                      task.subjectId
+                  );
+
+                return `
+                  <div
+                    style="
+                      display:flex;
+                      justify-content:space-between;
+                      padding:8px;
+                      border-radius:8px;
+                      background:var(--muted);
+                    "
+                  >
+
+                    <div>
+
+                      <strong>
+                        ${escapeHtml(
+                          task.title
+                        )}
+                      </strong>
+
+                      <div class="text-muted">
+                        ${
+                          subject
+                            ? escapeHtml(
+                                subject.name
+                              )
+                            : 'Matière inconnue'
+                        }
+
+                        •
+                        ${formatDateReadable(
+                          task.date
+                        )}
+                      </div>
+
+                    </div>
+
+                    <div class="text-muted">
+                      ${escapeHtml(
+                        task.priority ||
+                        ''
+                      )}
+                    </div>
+
+                  </div>
+                `;
+              })
+              .join('')
+
+          : `
+            <div class="text-muted">
+              Aucune échéance prochaine
+            </div>
+          `
+      );
+  }
+
+
+  /* =========================
+     MOYENNE
+     ========================= */
+
+  const average =
+    computeGeneralAverage();
+
+  const avgEl =
+    document.getElementById(
+      'avgGeneral'
+    );
+
   if (avgEl) {
-    const average = computeGeneralAverage();
-    avgEl.textContent = isNaN(average) ? 'Aucune note' : `${average.toFixed(2)}/20`;
+
+    avgEl.textContent =
+      isNaN(average)
+        ? 'Aucune note'
+        : `${average.toFixed(2)}/20`;
   }
 }
 
 function renderDashboardMini() {
-  // placeholder for small stats if needed
+  // Réservé pour de futures statistiques.
 }
 
-/* ===========================
+
+/* =========================================================
    TÂCHES
-   =========================== */
+   ========================================================= */
+
 function renderTasks() {
-  const el = document.getElementById('tasksList');
-  if (!el) return;
-  el.innerHTML = '';
-  if ((store.tasks || []).length === 0) {
-    el.innerHTML = `<div class="text-muted">Aucun devoir ni évaluation. Créez-en un !</div>`;
+
+  const element =
+    document.getElementById(
+      'tasksList'
+    );
+
+  if (!element) return;
+
+  element.innerHTML = '';
+
+
+  if (store.tasks.length === 0) {
+
+    element.innerHTML = `
+      <div class="text-muted">
+        Aucun devoir ni évaluation.
+        Créez-en un !
+      </div>
+    `;
+
     return;
   }
 
-  const sorted = [...store.tasks].sort((a, b) => new Date(a.date) - new Date(b.date));
-  sorted.forEach(task => {
-    const item = document.createElement('div');
-    item.className = 'list-item';
-    const subject = (store.subjects || []).find(s => s.id === task.subjectId);
+
+  const tasks =
+    [...store.tasks]
+      .sort(
+        (a, b) =>
+          new Date(a.date) -
+          new Date(b.date)
+      );
+
+
+  tasks.forEach(task => {
+
+    const item =
+      document.createElement('div');
+
+    item.className =
+      'list-item';
+
+    const subject =
+      store.subjects.find(
+        s =>
+          s.id ===
+          task.subjectId
+      );
+
+
     item.innerHTML = `
       <div>
+
         <div style="font-weight:700">
-          ${escapeHtml(task.title)}
-          <span class="text-muted" style="font-weight:600"> • ${escapeHtml(task.type || '')}</span>
+
+          ${escapeHtml(
+            task.title
+          )}
+
+          <span
+            class="text-muted"
+            style="font-weight:600"
+          >
+            •
+            ${escapeHtml(
+              task.type ||
+              'Tâche'
+            )}
+          </span>
+
         </div>
-        <div class="meta">${subject ? escapeHtml(subject.name) : ''} • ${formatDateReadable(task.date)} ${task.startTime ? ' • ' + escapeHtml(task.startTime) : ''}</div>
+
+        <div class="meta">
+
+          ${
+            subject
+              ? escapeHtml(
+                  subject.name
+                )
+              : ''
+          }
+
+          •
+
+          ${formatDateReadable(
+            task.date
+          )}
+
+          ${
+            task.startTime
+              ? ' • ' +
+                escapeHtml(
+                  task.startTime
+                )
+              : ''
+          }
+
+        </div>
+
       </div>
-      <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
-        <div style="display:flex;gap:6px;">
-          <button class="btn small" data-action="edit" data-id="${task.id}">Modifier</button>
-          <button class="btn small btn-ghost" data-action="delete" data-id="${task.id}">Supprimer</button>
+
+
+      <div
+        style="
+          display:flex;
+          flex-direction:column;
+          gap:6px;
+          align-items:flex-end;
+        "
+      >
+
+        <div
+          style="
+            display:flex;
+            gap:6px;
+          "
+        >
+
+          <button
+            class="btn small"
+            data-action="edit"
+            data-id="${task.id}"
+          >
+            Modifier
+          </button>
+
+          <button
+            class="btn small btn-ghost"
+            data-action="delete"
+            data-id="${task.id}"
+          >
+            Supprimer
+          </button>
+
         </div>
-        <label class="text-muted"><input type="checkbox" data-id="${task.id}" ${task.status === 'done' ? 'checked' : ''}> Terminé</label>
+
+        <label class="text-muted">
+
+          <input
+            type="checkbox"
+            data-id="${task.id}"
+            ${
+              task.status === 'done'
+                ? 'checked'
+                : ''
+            }
+          >
+
+          Terminé
+
+        </label>
+
       </div>
     `;
-    el.appendChild(item);
+
+    element.appendChild(
+      item
+    );
   });
 
-  // attach action handlers
-  el.querySelectorAll('button[data-action]').forEach(btn => {
-    <h4>Ajouter une matière</h4>
-    <div style="display:grid;gap:8px">
-      <label>Nom <input id="newSubName" class="input" placeholder="Ex. Physique"></label>
-      <label>Couleur <input id="newSubColor" type="color" value="#cfe8ff"></label>
-      <div id="presetColors" style="display:flex;gap:8px;flex-wrap:wrap"></div>
-      <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button id="addSubBtn" class="btn rose small">Ajouter</button>
-        <button id="closeSubBtn" class="btn small btn-ghost">Fermer</button>
-      </div>
-    </div>
-  `;
-  openModal(html);
 
-  // render presets
-  const presetEl = document.getElementById('presetColors');
-  if (presetEl) {
-    presetEl.innerHTML = '';
-    pastel.forEach(c => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.title = c;
-      b.style.cssText = `width:28px;height:28px;border-radius:6px;border:1px solid rgba(0,0,0,0.08);background:${c};cursor:pointer`;
-      b.addEventListener('click', () => { const picker = document.getElementById('newSubColor'); if (picker) picker.value = c; });
-      presetEl.appendChild(b);
+  /* BOUTONS */
+
+  element
+    .querySelectorAll(
+      'button[data-action]'
+    )
+    .forEach(button => {
+
+      button.addEventListener(
+        'click',
+        event => {
+
+          const id =
+            event.currentTarget.dataset.id;
+
+          const action =
+            event.currentTarget.dataset.action;
+
+
+          if (action === 'edit') {
+
+            openTaskModal(id);
+
+          }
+
+
+          if (action === 'delete') {
+
+            if (
+              confirm(
+                'Supprimer cette tâche ?'
+              )
+            ) {
+              deleteTask(id);
+            }
+
+          }
+        }
+      );
     });
-  }
 
-  function renderSubjectsList() {
-    const container = document.getElementById('subjectsList');
-    if (!container) return;
-    container.innerHTML = '';
-    if (!Array.isArray(store.subjects) || store.subjects.length === 0) {
-      container.innerHTML = '<div class="text-muted">Aucune matière définie.</div>';
-      return;
-    }
-    store.subjects.forEach(s => {
-      const row = document.createElement('div');
-      row.style.display = 'flex';
-      row.style.gap = '8px';
-      row.style.alignItems = 'center';
-      row.innerHTML = `
-        <input class="input sub-name" data-id="${s.id}" value="${escapeHtml(s.name)}" style="flex:1" />
-        <input type="color" class="sub-color" data-id="${s.id}" value="${escapeHtml(s.color || '#ffd0e0')}" />
-        <button class="btn small" data-action="save" data-id="${s.id}">OK</button>
-        <button class="btn small btn-ghost" data-action="delete" data-id="${s.id}">Suppr</button>
-      `;
-      container.appendChild(row);
+
+  /* CHECKBOX */
+
+  element
+    .querySelectorAll(
+      'input[type="checkbox"][data-id]'
+    )
+    .forEach(checkbox => {
+
+      checkbox.addEventListener(
+        'change',
+        event => {
+
+          const id =
+            event.currentTarget.dataset.id;
+
+          const task =
+            store.tasks.find(
+              t =>
+                t.id === id
+            );
+
+          if (!task) return;
+
+          task.status =
+            event.currentTarget.checked
+              ? 'done'
+              : 'scheduled';
+
+          syncTaskToEvent(
+            task
+          );
+
+          saveStore();
+        }
+      );
     });
-  }
-
-  renderSubjectsList();
-
-  // delegated actions
-  document.getElementById('subjectsList')?.addEventListener('click', (e) => {
-    const btn = e.target;
-    const action = btn.dataset?.action;
-    const id = btn.dataset?.id;
-    if (!action || !id) return;
-
-    if (action === 'save') {
-      const nameEl = document.querySelector(`.sub-name[data-id="${id}"]`);
-      const colorEl = document.querySelector(`.sub-color[data-id="${id}"]`);
-      if (!nameEl) return;
-      const name = nameEl.value.trim() || 'Sans nom';
-      const color = colorEl ? colorEl.value : '#ffd0e0';
-      const subj = (store.subjects || []).find(x => x.id === id);
-      if (subj) { subj.name = name; subj.color = color; saveStore(); renderSubjectsList(); }
-    }
-
-    if (action === 'delete') {
-      if (confirm('Supprimer cette matière ? Cela n\\'effacera pas les événements mais la matière sera retirée.')) {
-        store.subjects = (store.subjects || []).filter(x => x.id !== id);
-        (store.events || []).forEach(ev => { if (ev.subjectId === id) ev.subjectId = null; });
-        (store.tasks || []).forEach(t => { if (t.subjectId === id) t.subjectId = null; });
-        saveStore();
-        renderSubjectsList();
-      }
-    }
-  });
-
-  document.getElementById('addSubBtn')?.addEventListener('click', () => {
-    const name = document.getElementById('newSubName')?.value.trim();
-    const color = document.getElementById('newSubColor')?.value || '#cfe8ff';
-    if (!name) { alert('Donne un nom à la matière.'); return; }
-    const id = uid('matiere');
-    store.subjects.push({ id, name, color });
-    saveStore();
-    document.getElementById('newSubName').value = '';
-    renderSubjectsList();
-  });
-
-  document.getElementById('closeSubBtn')?.addEventListener('click', closeModal);
 }
 
-/* ===========================
+
+/* =========================================================
+   MODALE
+   ========================================================= */
+
+function openModal(contentHtml) {
+
+  const modal =
+    document.getElementById(
+      'modal'
+    );
+
+  if (!modal) {
+    console.error(
+      'Élément #modal introuvable.'
+    );
+    return;
+  }
+
+  modal.innerHTML =
+    `<div class="card">${contentHtml}</div>`;
+
+  modal.classList.remove(
+    'hidden'
+  );
+
+
+  modal.onclick =
+    event => {
+
+      if (
+        event.target ===
+        modal
+      ) {
+        closeModal();
+      }
+    };
+}
+
+function closeModal() {
+
+  const modal =
+    document.getElementById(
+      'modal'
+    );
+
+  if (!modal) return;
+
+  modal.classList.add(
+    'hidden'
+  );
+
+  modal.innerHTML = '';
+}
+
+
+/* =========================================================
+   MODALE TÂCHE
+   ========================================================= */
+
+function openTaskModal(taskId = null) {
+
+  const existing =
+    taskId
+      ? store.tasks.find(
+          task =>
+            task.id ===
+            taskId
+        )
+      : null;
+
+
+  const task =
+    existing || {
+
+      id:
+        uid('task'),
+
+      subjectId:
+        store.subjects[0]?.id ||
+        null,
+
+      title:
+        '',
+
+      type:
+        'Devoir',
+
+      date:
+        formatDate(
+          addDays(
+            new Date(),
+            1
+          )
+        ),
+
+      startTime:
+        '',
+
+      priority:
+        'Moyenne',
+
+      timeEstimate:
+        '30',
+
+      status:
+        'scheduled',
+
+      notes:
+        ''
+    };
+
+
+  const subjectOptions =
+    store.subjects
+      .map(
+        subject =>
+          `
+          <option
+            value="${subject.id}"
+            ${
+              subject.id ===
+              task.subjectId
+                ? 'selected'
+                : ''
+            }
+          >
+            ${escapeHtml(
+              subject.name
+            )}
+          </option>
+        `
+      )
+      .join('');
+
+
+  const html = `
+
+    <h3>
+      ${
+        taskId
+          ? 'Modifier la tâche'
+          : 'Nouvelle tâche'
+      }
+    </h3>
+
+    <div
+      style="
+        display:grid;
+        gap:8px;
+      "
+    >
+
+      <label>
+        Matière
+
+        <select
+          id="taskSubject"
+          class="select"
+        >
+          ${subjectOptions}
+        </select>
+
+      </label>
+
+
+      <label>
+        Titre
+
+        <input
+          id="taskTitle"
+          class="input"
+          value="${escapeHtml(
+            task.title
+          )}"
+        >
+
+      </label>
+
+
+      <label>
+        Type
+
+        <select
+          id="taskType"
+          class="select"
+        >
+
+          ${[
+            'Devoir',
+            'DM',
+            'Évaluation',
+            'Contrôle',
+            'Examen',
+            'Projet'
+          ]
+            .map(
+              type =>
+                `
+                <option
+                  ${
+                    task.type ===
+                    type
+                      ? 'selected'
+                      : ''
+                  }
+                >
+                  ${type}
+                </option>
+              `
+            )
+            .join('')}
+
+        </select>
+
+      </label>
+
+
+      <label>
+        Date limite
+
+        <input
+          id="taskDate"
+          type="date"
+          class="input"
+          value="${task.date}"
+        >
+
+      </label>
+
+
+      <label>
+        Heure (optionnel)
+
+        <input
+          id="taskStartTime"
+          class="input"
+          placeholder="hh:mm"
+          value="${escapeHtml(
+            task.startTime || ''
+          )}"
+        >
+
+      </label>
+
+
+      <label>
+        Priorité
+
+        <select
+          id="taskPriority"
+          class="select"
+        >
+
+          ${[
+            'Haute',
+            'Moyenne',
+            'Basse'
+          ]
+            .map(
+              priority =>
+                `
+                <option
+                  ${
+                    task.priority ===
+                    priority
+                      ? 'selected'
+                      : ''
+                  }
+                >
+                  ${priority}
+                </option>
+              `
+            )
+            .join('')}
+
+        </select>
+
+      </label>
+
+
+      <label>
+        Temps estimé (min)
+
+        <input
+          id="taskEstimate"
+          class="input"
+          value="${escapeHtml(
+            task.timeEstimate ||
+            '30'
+          )}"
+        >
+
+      </label>
+
+
+      <label>
+        Notes (optionnel)
+
+        <textarea
+          id="taskNotes"
+          rows="3"
+          class="input"
+        >${escapeHtml(
+          task.notes || ''
+        )}</textarea>
+
+      </label>
+
+
+      <div
+        style="
+          display:flex;
+          gap:8px;
+          justify-content:flex-end;
+        "
+      >
+
+        <button
+          id="cancel"
+          class="btn small btn-ghost"
+        >
+          Annuler
+        </button>
+
+        <button
+          id="save"
+          class="btn rose small"
+        >
+          ${
+            taskId
+              ? 'Enregistrer'
+              : 'Créer'
+          }
+        </button>
+
+      </div>
+
+    </div>
+  `;
+
+
+  openModal(html);
+
+
+  document
+    .getElementById('cancel')
+    ?.addEventListener(
+      'click',
+      closeModal
+    );
+
+
+  document
+    .getElementById('save')
+    ?.addEventListener(
+      'click',
+      () => {
+
+        const title =
+          document
+            .getElementById(
+              'taskTitle'
+            )
+            .value
+            .trim();
+
+
+        if (!title) {
+
+          alert(
+            'Veuillez entrer un titre.'
+          );
+
+          return;
+        }
+
+
+        const updatedTask = {
+
+          id:
+            task.id,
+
+          subjectId:
+            document
+              .getElementById(
+                'taskSubject'
+              )
+              .value,
+
+          title:
+
+            title,
+
+          type:
+            document
+              .getElementById(
+                'taskType'
+              )
+              .value,
+
+          date:
+            document
+              .getElementById(
+                'taskDate'
+              )
+              .value,
+
+          startTime:
+            document
+              .getElementById(
+                'taskStartTime'
+              )
+              .value,
+
+          priority:
+            document
+              .getElementById(
+                'taskPriority'
+              )
+              .value,
+
+          timeEstimate:
+            document
+              .getElementById(
+                'taskEstimate'
+              )
+              .value,
+
+          status:
+            task.status ||
+            'scheduled',
+
+          notes:
+            document
+              .getElementById(
+                'taskNotes'
+              )
+              .value
+        };
+
+
+        const existingTask =
+          store.tasks.find(
+            t =>
+              t.id ===
+              updatedTask.id
+          );
+
+
+        if (existingTask) {
+
+          Object.assign(
+            existingTask,
+            updatedTask
+          );
+
+        } else {
+
+          store.tasks.push(
+            updatedTask
+          );
+        }
+
+
+        syncTaskToEvent(
+          updatedTask
+        );
+
+        saveStore();
+
+        closeModal();
+      }
+    );
+}
+
+
+/* =========================================================
+   SYNCHRONISATION TÂCHE / CALENDRIER
+   ========================================================= */
+
+function syncTaskToEvent(task) {
+
+  let event =
+    store.events.find(
+      e =>
+        e.linkedId ===
+        task.id
+    );
+
+
+  if (!event) {
+
+    event = {
+
+      id:
+        uid('event'),
+
+      title:
+        `${task.type} — ${task.title}`,
+
+      subjectId:
+        task.subjectId,
+
+      type:
+        task.type,
+
+      date:
+        task.date,
+
+      startTime:
+        task.startTime || '',
+
+      endTime:
+        '',
+
+      priority:
+        task.priority ||
+        'Moyenne',
+
+      status:
+        task.status ||
+        'scheduled',
+
+      linkedId:
+        task.id
+    };
+
+    store.events.push(
+      event
+    );
+
+  } else {
+
+    event.title =
+      `${task.type} — ${task.title}`;
+
+    event.subjectId =
+      task.subjectId;
+
+    event.type =
+      task.type;
+
+    event.date =
+      task.date;
+
+    event.startTime =
+      task.startTime || '';
+
+    event.priority =
+      task.priority ||
+      'Moyenne';
+
+    event.status =
+      task.status ||
+      'scheduled';
+  }
+}
+
+
+/* =========================================================
+   SUPPRIMER TÂCHE
+   ========================================================= */
+
+function deleteTask(id) {
+
+  store.tasks =
+    store.tasks.filter(
+      task =>
+        task.id !== id
+    );
+
+  store.events =
+    store.events.filter(
+      event =>
+        event.linkedId !== id
+    );
+
+  saveStore();
+}
+
+
+/* =========================================================
+   ÉVÉNEMENT
+   ========================================================= */
+
+function openEventModal(event = null) {
+
+  const e =
+    event || {
+
+      id:
+        uid('event'),
+
+      title:
+        '',
+
+      subjectId:
+        store.subjects[0]?.id ||
+        null,
+
+      type:
+        'Activité extrascolaire',
+
+      date:
+        formatDate(
+          new Date()
+        ),
+
+      startTime:
+        '',
+
+      endTime:
+        '',
+
+      priority:
+        'Moyenne',
+
+      status:
+        'scheduled',
+
+      linkedId:
+        null
+    };
+
+
+  const subjectOptions =
+    store.subjects
+      .map(
+        subject =>
+          `
+          <option
+            value="${subject.id}"
+            ${
+              subject.id ===
+              e.subjectId
+                ? 'selected'
+                : ''
+            }
+          >
+            ${escapeHtml(
+              subject.name
+            )}
+          </option>
+        `
+      )
+      .join('');
+
+
+  const html = `
+
+    <h3>
+      ${event
+        ? 'Modifier événement'
+        : 'Nouvel événement'}
+    </h3>
+
+    <div
+      style="
+        display:grid;
+        gap:8px;
+      "
+    >
+
+      <label>
+        Matière
+
+        <select
+          id="evSubject"
+          class="select"
+        >
+          ${subjectOptions}
+        </select>
+      </label>
+
+
+      <label>
+        Titre
+
+        <input
+          id="evTitle"
+          class="input"
+          value="${escapeHtml(
+            e.title
+          )}"
+        >
+      </label>
+
+
+      <label>
+        Type
+
+        <select
+          id="evType"
+          class="select"
+        >
+
+          ${[
+            'Activité extrascolaire',
+            'Révision',
+            'Devoir',
+            'Évaluation'
+          ]
+            .map(
+              type =>
+                `
+                <option
+                  ${
+                    e.type ===
+                    type
+                      ? 'selected'
+                      : ''
+                  }
+                >
+                  ${type}
+                </option>
+              `
+            )
+            .join('')}
+
+        </select>
+
+      </label>
+
+
+      <label>
+        Date
+
+        <input
+          id="evDate"
+          type="date"
+          class="input"
+          value="${e.date}"
+        >
+      </label>
+
+
+      <label>
+        Heure de début
+
+        <input
+          id="evStart"
+          class="input"
+          placeholder="hh:mm"
+          value="${escapeHtml(
+            e.startTime ||
+            ''
+          )}"
+        >
+      </label>
+
+
+      <label>
+        Heure de fin
+
+        <input
+          id="evEnd"
+          class="input"
+          placeholder="hh:mm"
+          value="${escapeHtml(
+            e.endTime ||
+            ''
+          )}"
+        >
+      </label>
+
+
+      <div
+        style="
+          display:flex;
+          gap:8px;
+          justify-content:flex-end;
+        "
+      >
+
+        <button
+          id="cancel"
+          class="btn small btn-ghost"
+        >
+          Annuler
+        </button>
+
+        <button
+          id="save"
+          class="btn rose small"
+        >
+          Sauvegarder
+        </button>
+
+      </div>
+
+    </div>
+  `;
+
+
+  openModal(html);
+
+
+  document
+    .getElementById('cancel')
+    ?.addEventListener(
+      'click',
+      closeModal
+    );
+
+
+  document
+    .getElementById('save')
+    ?.addEventListener(
+      'click',
+      () => {
+
+        const newEvent = {
+
+          id:
+            e.id,
+
+          title:
+            document
+              .getElementById(
+                'evTitle'
+              )
+              .value
+              .trim(),
+
+          subjectId:
+            document
+              .getElementById(
+                'evSubject'
+              )
+              .value,
+
+          type:
+            document
+              .getElementById(
+                'evType'
+              )
+              .value,
+
+          date:
+            document
+              .getElementById(
+                'evDate'
+              )
+              .value,
+
+          startTime:
+            document
+              .getElementById(
+                'evStart'
+              )
+              .value,
+
+          endTime:
+            document
+              .getElementById(
+                'evEnd'
+              )
+              .value,
+
+          priority:
+            e.priority ||
+            'Moyenne',
+
+          status:
+            e.status ||
+            'scheduled',
+
+          linkedId:
+            e.linkedId ||
+            null
+        };
+
+
+        const index =
+          store.events.findIndex(
+            x =>
+              x.id ===
+              newEvent.id
+          );
+
+
+        if (index >= 0) {
+
+          store.events[index] =
+            newEvent;
+
+        } else {
+
+          store.events.push(
+            newEvent
+          );
+        }
+
+
+        saveStore();
+
+        closeModal();
+      }
+    );
+}
+
+
+/* =========================================================
+   VISUALISATION ÉVÉNEMENT
+   ========================================================= */
+
+function openEventViewer(event) {
+
+  const linkedTask =
+    event.linkedId
+      ? store.tasks.find(
+          task =>
+            task.id ===
+            event.linkedId
+        )
+      : null;
+
+
+  const subject =
+    store.subjects.find(
+      s =>
+        s.id ===
+        event.subjectId
+    );
+
+
+  const html = `
+
+    <h3>
+      Événement
+    </h3>
+
+    <div
+      style="
+        display:grid;
+        gap:8px;
+      "
+    >
+
+      <div>
+        <strong>
+          ${escapeHtml(
+            event.title ||
+            'Événement'
+          )}
+        </strong>
+      </div>
+
+
+      <div class="meta">
+
+        ${
+          subject
+            ? escapeHtml(
+                subject.name
+              )
+            : ''
+        }
+
+        •
+
+        ${formatDateReadable(
+          event.date
+        )}
+
+        ${
+          event.startTime
+            ? ' • ' +
+              escapeHtml(
+                event.startTime
+              )
+            : ''
+        }
+
+      </div>
+
+
+      <div class="text-muted">
+        Type :
+        ${escapeHtml(
+          event.type ||
+          'Événement'
+        )}
+      </div>
+
+
+      ${
+        linkedTask
+          ? `
+            <div class="text-muted">
+              Cet événement est lié
+              à une tâche du Planner.
+            </div>
+          `
+          : ''
+      }
+
+
+      <div
+        style="
+          display:flex;
+          gap:8px;
+          justify-content:flex-end;
+        "
+      >
+
+        <button
+          id="edit"
+          class="btn small"
+        >
+          Modifier
+        </button>
+
+        <button
+          id="toggleDone"
+          class="btn small btn-ghost"
+        >
+          ${
+            event.status === 'done'
+              ? 'Marquer non terminé'
+              : 'Marquer terminé'
+          }
+        </button>
+
+        <button
+          id="delete"
+          class="btn small btn-ghost"
+        >
+          Supprimer
+        </button>
+
+      </div>
+
+    </div>
+  `;
+
+
+  openModal(html);
+
+
+  document
+    .getElementById('edit')
+    ?.addEventListener(
+      'click',
+      () => {
+
+        closeModal();
+
+        openEventModal(
+          event
+        );
+      }
+    );
+
+
+  document
+    .getElementById('toggleDone')
+    ?.addEventListener(
+      'click',
+      () => {
+
+        event.status =
+          event.status === 'done'
+            ? 'scheduled'
+            : 'done';
+
+
+        if (event.linkedId) {
+
+          const task =
+            store.tasks.find(
+              t =>
+                t.id ===
+                event.linkedId
+            );
+
+          if (task) {
+
+            task.status =
+              event.status;
+          }
+        }
+
+
+        saveStore();
+
+        closeModal();
+      }
+    );
+
+
+  document
+    .getElementById('delete')
+    ?.addEventListener(
+      'click',
+      () => {
+
+        if (
+          !confirm(
+            'Supprimer cet événement ?'
+          )
+        ) {
+          return;
+        }
+
+
+        store.events =
+          store.events.filter(
+            e =>
+              e.id !==
+              event.id
+          );
+
+
+        if (event.linkedId) {
+
+          const task =
+            store.tasks.find(
+              t =>
+                t.id ===
+                event.linkedId
+            );
+
+          if (task) {
+            task.linkedId =
+              null;
+          }
+        }
+
+
+        saveStore();
+
+        closeModal();
+      }
+    );
+}
+
+
+/* =========================================================
+   LEÇONS
+   ========================================================= */
+
+function renderLessons() {
+
+  const element =
+    document.getElementById(
+      'lessonsList'
+    );
+
+  if (!element) return;
+
+  element.innerHTML = '';
+
+
+  if (store.lessons.length === 0) {
+
+    element.innerHTML = `
+      <div class="text-muted">
+        Aucune leçon enregistrée.
+      </div>
+    `;
+
+    return;
+  }
+
+
+  const lessons =
+    [...store.lessons]
+      .sort(
+        (a, b) =>
+          new Date(a.date) -
+          new Date(b.date)
+      );
+
+
+  lessons.forEach(lesson => {
+
+    const subject =
+      store.subjects.find(
+        s =>
+          s.id ===
+          lesson.subjectId
+      );
+
+
+    const revisions =
+      store.revisions.filter(
+        revision =>
+          revision.lessonId ===
+          lesson.id
+      );
+
+
+    const item =
+      document.createElement('div');
+
+    item.className =
+      'list-item';
+
+
+    item.innerHTML = `
+
+      <div>
+
+        <div
+          style="
+            font-weight:700;
+          "
+        >
+          ${escapeHtml(
+            lesson.titre ||
+            'Leçon'
+          )}
+        </div>
+
+        <div class="meta">
+
+          ${
+            subject
+              ? escapeHtml(
+                  subject.name
+                )
+              : ''
+          }
+
+          •
+
+          ${escapeHtml(
+            lesson.chapitre ||
+            'Sans chapitre'
+          )}
+
+          •
+
+          ${formatDateReadable(
+            lesson.date
+          )}
+
+        </div>
+
+        ${
+          lesson.use2257
+            ? `
+              <div
+                class="meta"
+                style="
+                  margin-top:4px;
+                "
+              >
+                🌸 Méthode 2,3,5,7 activée
+                (${revisions.length}/4 révisions)
+              </div>
+            `
+            : ''
+        }
+
+      </div>
+
+
+      <div
+        style="
+          display:flex;
+          gap:6px;
+        "
+      >
+
+        <button
+          class="btn small"
+          data-action="view"
+          data-id="${lesson.id}"
+        >
+          Voir
+        </button>
+
+        <button
+          class="btn small"
+          data-action="edit"
+          data-id="${lesson.id}"
+        >
+          Modifier
+        </button>
+
+        <button
+          class="btn small btn-ghost"
+          data-action="delete"
+          data-id="${lesson.id}"
+        >
+          Supprimer
+        </button>
+
+      </div>
+    `;
+
+
+    element.appendChild(
+      item
+    );
+  });
+
+
+  element
+    .querySelectorAll(
+      'button[data-action]'
+    )
+    .forEach(button => {
+
+      button.addEventListener(
+        'click',
+        event => {
+
+          const id =
+            event.currentTarget.dataset.id;
+
+          const action =
+            event.currentTarget.dataset.action;
+
+
+          if (
+            action === 'view'
+          ) {
+            openLessonViewer(id);
+          }
+
+
+          if (
+            action === 'edit'
+          ) {
+            openLessonModal(id);
+          }
+
+
+          if (
+            action === 'delete'
+          ) {
+
+            if (
+              confirm(
+                'Supprimer cette leçon et ses révisions ?'
+              )
+            ) {
+              deleteLesson(id);
+            }
+          }
+        }
+      );
+    });
+}
+
+
+/* =========================================================
+   CRÉER / MODIFIER LEÇON
+   ========================================================= */
+
+function openLessonModal(
+  lessonId = null
+) {
+
+  const existing =
+    lessonId
+      ? store.lessons.find(
+          lesson =>
+            lesson.id ===
+            lessonId
+        )
+      : null;
+
+
+  const lesson =
+    existing || {
+
+      id:
+        uid('lesson'),
+
+      subjectId:
+        store.subjects[0]?.id ||
+        null,
+
+      chapitre:
+        '',
+
+      titre:
+        '',
+
+      date:
+        formatDate(
+          addDays(
+            new Date(),
+            1
+          )
+        ),
+
+      use2257:
+        false
+    };
+
+
+  const subjectOptions =
+    store.subjects
+      .map(
+        subject =>
+          `
+          <option
+            value="${subject.id}"
+            ${
+              subject.id ===
+              lesson.subjectId
+                ? 'selected'
+                : ''
+            }
+          >
+            ${escapeHtml(
+              subject.name
+            )}
+          </option>
+        `
+      )
+      .join('');
+
+
+  const html = `
+
+    <h3>
+      ${
+        lessonId
+          ? 'Modifier la leçon'
+          : 'Nouvelle leçon'
+      }
+    </h3>
+
+    <div
+      style="
+        display:grid;
+        gap:8px;
+      "
+    >
+
+      <label>
+        Matière
+
+        <select
+          id="lesSubject"
+          class="select"
+        >
+          ${subjectOptions}
+        </select>
+      </label>
+
+
+      <label>
+        Chapitre
+
+        <input
+          id="lesChap"
+          class="input"
+          value="${escapeHtml(
+            lesson.chapitre
+          )}"
+        >
+      </label>
+
+
+      <label>
+        Titre de la leçon
+
+        <input
+          id="lesTitle"
+          class="input"
+          value="${escapeHtml(
+            lesson.titre
+          )}"
+        >
+      </label>
+
+
+      <label>
+        Date de la leçon
+
+        <input
+          id="lesDate"
+          type="date"
+          class="input"
+          value="${lesson.date}"
+        >
+      </label>
+
+
+      <label>
+
+        <input
+          id="use2257"
+          type="checkbox"
+          ${
+            lesson.use2257
+              ? 'checked'
+              : ''
+          }
+        >
+
+        Activer la méthode
+        <strong>2,3,5,7</strong>
+
+        <div
+          class="text-muted"
+          style="
+            margin-left:24px;
+            margin-top:4px;
+          "
+        >
+          Révisions automatiques :
+          J+2 • J+3 • J+5 • J+7
+        </div>
+
+      </label>
+
+
+      <div
+        style="
+          display:flex;
+          gap:8px;
+          justify-content:flex-end;
+        "
+      >
+
+        <button
+          id="cancel"
+          class="btn small btn-ghost"
+        >
+          Annuler
+        </button>
+
+        <button
+          id="save"
+          class="btn rose small"
+        >
+          Enregistrer
+        </button>
+
+      </div>
+
+    </div>
+  `;
+
+
+  openModal(html);
+
+
+  document
+    .getElementById('cancel')
+    ?.addEventListener(
+      'click',
+      closeModal
+    );
+
+
+  document
+    .getElementById('save')
+    ?.addEventListener(
+      'click',
+      () => {
+
+        const title =
+          document
+            .getElementById(
+              'lesTitle'
+            )
+            .value
+            .trim();
+
+
+        if (!title) {
+
+          alert(
+            'Veuillez entrer un titre de leçon.'
+          );
+
+          return;
+        }
+
+
+        const updatedLesson = {
+
+          id:
+            lesson.id,
+
+          subjectId:
+            document
+              .getElementById(
+                'lesSubject'
+              )
+              .value,
+
+          chapitre:
+            document
+              .getElementById(
+                'lesChap'
+              )
+              .value
+              .trim(),
+
+          titre:
+            title,
+
+          date:
+            document
+              .getElementById(
+                'lesDate'
+              )
+              .value,
+
+          use2257:
+            document
+              .getElementById(
+                'use2257'
+              )
+              .checked
+        };
+
+
+        const existingLesson =
+          store.lessons.find(
+            l =>
+              l.id ===
+              updatedLesson.id
+          );
+
+
+        if (existingLesson) {
+
+          Object.assign(
+            existingLesson,
+            updatedLesson
+          );
+
+        } else {
+
+          store.lessons.push(
+            updatedLesson
+          );
+        }
+
+
+        /*
+          MÉTHODE 2,3,5,7
+
+          J+2
+          J+3
+          J+5
+          J+7
+        */
+
+        if (
+          updatedLesson.use2257
+        ) {
+
+          const revisionDays =
+            [2, 3, 5, 7];
+
+          revisionDays.forEach(
+            offset => {
+
+              const revisionDate =
+                formatDate(
+                  addDays(
+                    new Date(
+                      updatedLesson.date
+                    ),
+                    offset
+                  )
+                );
+
+
+              const existingRevision =
+                store.revisions.find(
+                  revision =>
+                    revision.lessonId ===
+                      updatedLesson.id &&
+                    revision.offset ===
+                      offset
+                );
+
+
+              if (
+                existingRevision
+              ) {
+
+                existingRevision.date =
+                  revisionDate;
+
+                existingRevision.subjectId =
+                  updatedLesson.subjectId;
+
+                existingRevision.title =
+                  `Révision 2,3,5,7 — ${updatedLesson.titre}`;
+
+              } else {
+
+                store.revisions.push({
+
+                  id:
+                    uid('revision'),
+
+                  lessonId:
+                    updatedLesson.id,
+
+                  subjectId:
+                    updatedLesson.subjectId,
+
+                  title:
+                    `Révision 2,3,5,7 — ${updatedLesson.titre}`,
+
+                  date:
+                    revisionDate,
+
+                  offset:
+                    offset,
+
+                  status:
+                    'scheduled'
+                });
+              }
+            }
+          );
+
+        } else {
+
+          /*
+            Si la méthode est désactivée,
+            supprimer les anciennes révisions
+            automatiques de cette leçon.
+          */
+
+          store.revisions =
+            store.revisions.filter(
+              revision =>
+                revision.lessonId !==
+                updatedLesson.id
+            );
+        }
+
+
+        saveStore();
+
+        closeModal();
+      }
+    );
+}
+
+
+/* =========================================================
+   VISUALISATION LEÇON
+   ========================================================= */
+
+function openLessonViewer(id) {
+
+  const lesson =
+    store.lessons.find(
+      l =>
+        l.id === id
+    );
+
+  if (!lesson) return;
+
+
+  const subject =
+    store.subjects.find(
+      s =>
+        s.id ===
+        lesson.subjectId
+    );
+
+
+  const revisions =
+    store.revisions
+      .filter(
+        revision =>
+          revision.lessonId ===
+          lesson.id
+      )
+      .sort(
+        (a, b) =>
+          a.offset -
+          b.offset
+      );
+
+
+  const revisionHtml =
+    revisions.length
+
+      ? revisions
+          .map(
+            revision =>
+              `
+              <div
+                style="
+                  padding:8px;
+                  border-radius:8px;
+                  background:var(--muted);
+                  display:flex;
+                  justify-content:space-between;
+                  align-items:center;
+                  gap:8px;
+                "
+              >
+
+                <div>
+
+                  <strong>
+                    J+${revision.offset}
+                  </strong>
+
+                  <div class="meta">
+                    ${formatDateReadable(
+                      revision.date
+                    )}
+                  </div>
+
+                  <div class="text-muted">
+                    ${
+                      revision.status ===
+                      'done'
+                        ? '✓ Révision terminée'
+                        : 'À réviser'
+                    }
+                  </div>
+
+                </div>
+
+
+                <div
+                  style="
+                    display:flex;
+                    gap:6px;
+                  "
+                >
+
+                  <button
+                    class="btn small"
+                    data-action="mark"
+                    data-id="${revision.id}"
+                  >
+                    ${
+                      revision.status ===
+                      'done'
+                        ? 'Annuler'
+                        : 'Terminé'
+                    }
+                  </button>
+
+                  <button
+                    class="btn small btn-ghost"
+                    data-action="edit"
+                    data-id="${revision.id}"
+                  >
+                    Modifier
+                  </button>
+
+                  <button
+                    class="btn small btn-ghost"
+                    data-action="delete"
+                    data-id="${revision.id}"
+                  >
+                    Suppr.
+                  </button>
+
+                </div>
+
+              </div>
+            `
+          )
+          .join('')
+
+      : `
+        <div class="text-muted">
+          Aucune révision planifiée.
+        </div>
+      `;
+
+
+  const html = `
+
+    <h3>
+      ${escapeHtml(
+        lesson.titre
+      )}
+    </h3>
+
+    <div
+      style="
+        display:grid;
+        gap:8px;
+      "
+    >
+
+      <div>
+        <strong>Matière :</strong>
+        ${
+          subject
+            ? escapeHtml(
+                subject.name
+              )
+            : ''
+        }
+      </div>
+
+
+      <div>
+        <strong>Chapitre :</strong>
+        ${escapeHtml(
+          lesson.chapitre ||
+          '—'
+        )}
+      </div>
+
+
+      <div>
+        <strong>Date :</strong>
+        ${formatDateReadable(
+          lesson.date
+        )}
+      </div>
+
+
+      <h4>
+        Méthode 2,3,5,7
+      </h4>
+
+      ${
+        lesson.use2257
+          ? revisionHtml
+          : `
+            <div class="text-muted">
+              La méthode 2,3,5,7 n'est pas activée.
+            </div>
+          `
+      }
+
+
+      <div
+        style="
+          display:flex;
+          justify-content:flex-end;
+          margin-top:8px;
+        "
+      >
+
+        <button
+          id="close"
+          class="btn small btn-ghost"
+        >
+          Fermer
+        </button>
+
+      </div>
+
+    </div>
+  `;
+
+
+  openModal(html);
+
+
+  document
+    .getElementById('close')
+    ?.addEventListener(
+      'click',
+      closeModal
+    );
+
+
+  document
+    .querySelectorAll(
+      '#modal [data-action]'
+    )
+    .forEach(button => {
+
+      button.addEventListener(
+        'click',
+        event => {
+
+          const revisionId =
+            event.currentTarget.dataset.id;
+
+          const action =
+            event.currentTarget.dataset.action;
+
+
+          const revision =
+            store.revisions.find(
+              r =>
+                r.id ===
+                revisionId
+            );
+
+          if (!revision) return;
+
+
+          if (
+            action === 'mark'
+          ) {
+
+            revision.status =
+              revision.status ===
+              'done'
+                ? 'scheduled'
+                : 'done';
+
+            saveStore();
+
+            closeModal();
+
+            openLessonViewer(
+              lesson.id
+            );
+          }
+
+
+          if (
+            action === 'edit'
+          ) {
+
+            closeModal();
+
+            openRevisionEditModal(
+              revision
+            );
+          }
+
+
+          if (
+            action === 'delete'
+          ) {
+
+            if (
+              confirm(
+                'Supprimer cette révision ?'
+              )
+            ) {
+
+              store.revisions =
+                store.revisions.filter(
+                  r =>
+                    r.id !==
+                    revisionId
+                );
+
+              saveStore();
+
+              closeModal();
+
+              openLessonViewer(
+                lesson.id
+              );
+            }
+          }
+        }
+      );
+    });
+}
+
+
+/* =========================================================
+   MODIFIER RÉVISION
+   ========================================================= */
+
+function openRevisionEditModal(
+  revision
+) {
+
+  const subjectOptions =
+    store.subjects
+      .map(
+        subject =>
+          `
+          <option
+            value="${subject.id}"
+            ${
+              subject.id ===
+              revision.subjectId
+                ? 'selected'
+                : ''
+            }
+          >
+            ${escapeHtml(
+              subject.name
+            )}
+          </option>
+        `
+      )
+      .join('');
+
+
+  const html = `
+
+    <h3>
+      Modifier la révision
+    </h3>
+
+    <div
+      style="
+        display:grid;
+        gap:8px;
+      "
+    >
+
+      <label>
+        Matière
+
+        <select
+          id="revSubject"
+          class="select"
+        >
+          ${subjectOptions}
+        </select>
+      </label>
+
+
+      <label>
+        Titre
+
+        <input
+          id="revTitle"
+          class="input"
+          value="${escapeHtml(
+            revision.title
+          )}"
+        >
+      </label>
+
+
+      <label>
+        Date
+
+        <input
+          id="revDate"
+          type="date"
+          class="input"
+          value="${revision.date}"
+        >
+      </label>
+
+
+      <div
+        style="
+          display:flex;
+          gap:8px;
+          justify-content:flex-end;
+        "
+      >
+
+        <button
+          id="cancel"
+          class="btn small btn-ghost"
+        >
+          Annuler
+        </button>
+
+        <button
+          id="save"
+          class="btn rose small"
+        >
+          Enregistrer
+        </button>
+
+      </div>
+
+    </div>
+  `;
+
+
+  openModal(html);
+
+
+  document
+    .getElementById('cancel')
+    ?.addEventListener(
+      'click',
+      closeModal
+    );
+
+
+  document
+    .getElementById('save')
+    ?.addEventListener(
+      'click',
+      () => {
+
+        revision.subjectId =
+          document
+            .getElementById(
+              'revSubject'
+            )
+            .value;
+
+        revision.title =
+          document
+            .getElementById(
+              'revTitle'
+            )
+            .value;
+
+        revision.date =
+          document
+            .getElementById(
+              'revDate'
+            )
+            .value;
+
+        saveStore();
+
+        closeModal();
+      }
+    );
+}
+
+
+/* =========================================================
+   SUPPRIMER LEÇON
+   ========================================================= */
+
+function deleteLesson(id) {
+
+  store.lessons =
+    store.lessons.filter(
+      lesson =>
+        lesson.id !== id
+    );
+
+  store.revisions =
+    store.revisions.filter(
+      revision =>
+        revision.lessonId !== id
+    );
+
+  saveStore();
+}
+
+
+/* =========================================================
+   ÉVALUATIONS
+   ========================================================= */
+
+function renderEvals() {
+
+  const element =
+    document.getElementById(
+      'evalsList'
+    );
+
+  if (!element) return;
+
+  element.innerHTML = '';
+
+
+  if (store.evals.length === 0) {
+
+    element.innerHTML = `
+      <div class="text-muted">
+        Aucune évaluation enregistrée.
+      </div>
+    `;
+
+    return;
+  }
+
+
+  const evaluations =
+    [...store.evals]
+      .sort(
+        (a, b) =>
+          new Date(a.date) -
+          new Date(b.date)
+      );
+
+
+  evaluations.forEach(evaluation => {
+
+    const subject =
+      store.subjects.find(
+        s =>
+          s.id ===
+          evaluation.subjectId
+      );
+
+
+    const item =
+      document.createElement('div');
+
+    item.className =
+      'list-item';
+
+
+    item.innerHTML = `
+
+      <div>
+
+        <div
+          style="
+            font-weight:700;
+          "
+        >
+          ${escapeHtml(
+            evaluation.nom
+          )}
+        </div>
+
+
+        <div class="meta">
+
+          ${
+            subject
+              ? escapeHtml(
+                  subject.name
+                )
+              : ''
+          }
+
+          •
+
+          ${formatDateReadable(
+            evaluation.date
+          )}
+
+          •
+
+          Coef
+          ${
+            evaluation.coefficient ||
+            1
+          }
+
+        </div>
+
+
+        <div class="meta">
+
+          Pronostic :
+          <strong>
+            ${
+              evaluation.pronostique ??
+              '-'
+            }
+          </strong>
+
+          •
+
+          Vraie note :
+          <strong>
+            ${
+              evaluation.vraie ??
+              '-'
+            }
+          </strong>
+
+        </div>
+
+      </div>
+
+
+      <div
+        style="
+          display:flex;
+          gap:6px;
+        "
+      >
+
+        <button
+          class="btn small"
+          data-action="edit"
+          data-id="${evaluation.id}"
+        >
+          Modifier
+        </button>
+
+        <button
+          class="btn small btn-ghost"
+          data-action="delete"
+          data-id="${evaluation.id}"
+        >
+          Supprimer
+        </button>
+
+      </div>
+    `;
+
+
+    element.appendChild(
+      item
+    );
+  });
+
+
+  element
+    .querySelectorAll(
+      'button[data-action]'
+    )
+    .forEach(button => {
+
+      button.addEventListener(
+        'click',
+        event => {
+
+          const id =
+            event.currentTarget.dataset.id;
+
+          const action =
+            event.currentTarget.dataset.action;
+
+
+          if (
+            action === 'edit'
+          ) {
+
+            openEvalModal(id);
+          }
+
+
+          if (
+            action === 'delete'
+          ) {
+
+            if (
+              confirm(
+                'Supprimer cette évaluation ?'
+              )
+            ) {
+
+              store.evals =
+                store.evals.filter(
+                  evaluation =>
+                    evaluation.id !==
+                    id
+                );
+
+
+              store.events =
+                store.events.filter(
+                  event =>
+                    event.linkedId !==
+                    id
+                );
+
+
+              saveStore();
+            }
+          }
+        }
+      );
+    });
+}
+
+
+/* =========================================================
+   MODALE ÉVALUATION
+   ========================================================= */
+
+function openEvalModal(
+  evalId = null
+) {
+
+  const existing =
+    evalId
+      ? store.evals.find(
+          evaluation =>
+            evaluation.id ===
+            evalId
+        )
+      : null;
+
+
+  const evaluation =
+    existing || {
+
+      id:
+        uid('eval'),
+
+      subjectId:
+        store.subjects[0]?.id ||
+        null,
+
+      nom:
+        '',
+
+      date:
+        formatDate(
+          addDays(
+            new Date(),
+            3
+          )
+        ),
+
+      pronostique:
+        null,
+
+      vraie:
+        null,
+
+      coefficient:
+        1
+    };
+
+
+  const subjectOptions =
+    store.subjects
+      .map(
+        subject =>
+          `
+          <option
+            value="${subject.id}"
+            ${
+              subject.id ===
+              evaluation.subjectId
+                ? 'selected'
+                : ''
+            }
+          >
+            ${escapeHtml(
+              subject.name
+            )}
+          </option>
+        `
+      )
+      .join('');
+
+
+  const html = `
+
+    <h3>
+      ${
+        evalId
+          ? 'Modifier évaluation'
+          : 'Nouvelle évaluation'
+      }
+    </h3>
+
+    <div
+      style="
+        display:grid;
+        gap:8px;
+      "
+    >
+
+      <label>
+        Matière
+
+        <select
+          id="evalSubject"
+          class="select"
+        >
+          ${subjectOptions}
+        </select>
+      </label>
+
+
+      <label>
+        Nom
+
+        <input
+          id="evalName"
+          class="input"
+          value="${escapeHtml(
+            evaluation.nom
+          )}"
+        >
+      </label>
+
+
+      <label>
+        Date
+
+        <input
+          id="evalDate"
+          type="date"
+          class="input"
+          value="${evaluation.date}"
+        >
+      </label>
+
+
+      <label>
+        Note pronostiquée
+
+        <input
+          id="evalPron"
+          type="number"
+          min="0"
+          max="20"
+          step="0.25"
+          class="input"
+          value="${
+            evaluation.pronostique ??
+            ''
+          }"
+        >
+      </label>
+
+
+      <label>
+        Vraie note
+
+        <input
+          id="evalReal"
+          type="number"
+          min="0"
+          max="20"
+          step="0.25"
+          class="input"
+          value="${
+            evaluation.vraie ??
+            ''
+          }"
+        >
+      </label>
+
+
+      <label>
+        Coefficient
+
+        <input
+          id="evalCoef"
+          type="number"
+          min="0.1"
+          step="0.1"
+          class="input"
+          value="${
+            evaluation.coefficient ||
+            1
+          }"
+        >
+      </label>
+
+
+      <div
+        style="
+          display:flex;
+          gap:8px;
+          justify-content:flex-end;
+        "
+      >
+
+        <button
+          id="cancel"
+          class="btn small btn-ghost"
+        >
+          Annuler
+        </button>
+
+        <button
+          id="save"
+          class="btn rose small"
+        >
+          Enregistrer
+        </button>
+
+      </div>
+
+    </div>
+  `;
+
+
+  openModal(html);
+
+
+  document
+    .getElementById('cancel')
+    ?.addEventListener(
+      'click',
+      closeModal
+    );
+
+
+  document
+    .getElementById('save')
+    ?.addEventListener(
+      'click',
+      () => {
+
+        const name =
+          document
+            .getElementById(
+              'evalName'
+            )
+            .value
+            .trim();
+
+
+        if (!name) {
+
+          alert(
+            'Veuillez entrer le nom de l’évaluation.'
+          );
+
+          return;
+        }
+
+
+        evaluation.subjectId =
+          document
+            .getElementById(
+              'evalSubject'
+            )
+            .value;
+
+        evaluation.nom =
+          name;
+
+        evaluation.date =
+          document
+            .getElementById(
+              'evalDate'
+            )
+            .value;
+
+
+        const pron =
+          document
+            .getElementById(
+              'evalPron'
+            )
+            .value;
+
+        evaluation.pronostique =
+          pron === ''
+            ? null
+            : Number(pron);
+
+
+        const real =
+          document
+            .getElementById(
+              'evalReal'
+            )
+            .value;
+
+        evaluation.vraie =
+          real === ''
+            ? null
+            : Number(real);
+
+
+        const coef =
+          document
+            .getElementById(
+              'evalCoef'
+            )
+            .value;
+
+        evaluation.coefficient =
+          coef === ''
+            ? 1
+            : Number(coef);
+
+
+        const existingEvaluation =
+          store.evals.find(
+            e =>
+              e.id ===
+              evaluation.id
+          );
+
+
+        if (
+          existingEvaluation
+        ) {
+
+          Object.assign(
+            existingEvaluation,
+            evaluation
+          );
+
+        } else {
+
+          store.evals.push(
+            evaluation
+          );
+        }
+
+
+        /*
+          Événement calendrier
+          lié à l'évaluation
+        */
+
+        store.events =
+          store.events.filter(
+            event =>
+              event.linkedId !==
+              evaluation.id
+          );
+
+
+        store.events.push({
+
+          id:
+            uid('event'),
+
+          title:
+            `Évaluation — ${evaluation.nom}`,
+
+          subjectId:
+            evaluation.subjectId,
+
+          type:
+            'Évaluation',
+
+          date:
+            evaluation.date,
+
+          startTime:
+            '',
+
+          endTime:
+            '',
+
+          priority:
+            'Haute',
+
+          status:
+            'scheduled',
+
+          linkedId:
+            evaluation.id
+        });
+
+
+        saveStore();
+
+        closeModal();
+      }
+    );
+}
+
+
+/* =========================================================
+   CALCUL DES MOYENNES
+   ========================================================= */
+
+function computeSubjectAverage(
+  subjectId
+) {
+
+  const list =
+    store.evals.filter(
+      evaluation =>
+        evaluation.subjectId ==
+          subjectId &&
+        evaluation.vraie != null &&
+        !isNaN(
+          Number(
+            evaluation.vraie
+          )
+        )
+    );
+
+
+  if (
+    list.length === 0
+  ) {
+    return NaN;
+  }
+
+
+  let totalPoints = 0;
+
+  let totalCoefficient = 0;
+
+
+  list.forEach(
+    evaluation => {
+
+      const note =
+        Number(
+          evaluation.vraie
+        );
+
+      const coefficient =
+        Number(
+          evaluation.coefficient ??
+          evaluation.coef
+        ) || 1;
+
+
+      totalPoints +=
+        note *
+        coefficient;
+
+      totalCoefficient +=
+        coefficient;
+    }
+  );
+
+
+  if (
+    totalCoefficient === 0
+  ) {
+    return NaN;
+  }
+
+
+  return (
+    totalPoints /
+    totalCoefficient
+  );
+}
+
+
+function computeGeneralAverage() {
+
+  const list =
+    store.evals.filter(
+      evaluation =>
+        evaluation.vraie != null &&
+        !isNaN(
+          Number(
+            evaluation.vraie
+          )
+        )
+    );
+
+
+  if (
+    list.length === 0
+  ) {
+    return NaN;
+  }
+
+
+  let totalPoints = 0;
+
+  let totalCoefficient = 0;
+
+
+  list.forEach(
+    evaluation => {
+
+      const note =
+        Number(
+          evaluation.vraie
+        );
+
+      const coefficient =
+        Number(
+          evaluation.coefficient ??
+          evaluation.coef
+        ) || 1;
+
+
+      totalPoints +=
+        note *
+        coefficient;
+
+      totalCoefficient +=
+        coefficient;
+    }
+  );
+
+
+  if (
+    totalCoefficient === 0
+  ) {
+    return NaN;
+  }
+
+
+  return (
+    totalPoints /
+    totalCoefficient
+  );
+}
+
+
+/* =========================================================
+   GRAPHIQUE DES NOTES
+   =========================================================
+
+   IMPORTANT :
+   On n'utilise PAS l'échelle "time".
+   Cela évite l'erreur :
+
+   "This method is not implemented:
+   Check that a complete date adapter is provided."
+
+   ========================================================= */
+
+let gradesChart = null;
+
+function renderGradesChart() {
+
+  const canvas =
+    document.getElementById(
+      'gradesChart'
+    );
+
+  if (!canvas) {
+    return;
+  }
+
+
+  /*
+    Si Chart.js n'est pas chargé,
+    on ne fait rien.
+  */
+
+  if (
+    typeof Chart ===
+    'undefined'
+  ) {
+
+    console.warn(
+      'Chart.js n’est pas chargé.'
+    );
+
+    return;
+  }
+
+
+  const ctx =
+    canvas.getContext(
+      '2d'
+    );
+
+
+  /*
+    Détruire le graphique
+    précédent
+  */
+
+  if (gradesChart) {
+
+    gradesChart.destroy();
+
+    gradesChart = null;
+  }
+
+
+  /*
+    Récupérer les évaluations
+    possédant une vraie note
+  */
+
+  const evaluations =
+    store.evals
+      .filter(
+        evaluation =>
+          evaluation.vraie != null &&
+          !isNaN(
+            Number(
+              evaluation.vraie
+            )
+          )
+      )
+      .sort(
+        (a, b) =>
+          new Date(a.date) -
+          new Date(b.date)
+      );
+
+
+  const labels =
+    evaluations.map(
+      evaluation =>
+        formatDateReadable(
+          evaluation.date
+        )
+    );
+
+
+  const values =
+    evaluations.map(
+      evaluation =>
+        Number(
+          evaluation.vraie
+        )
+    );
+
+
+  /*
+    Création du graphique
+  */
+
+  gradesChart =
+    new Chart(
+      ctx,
+      {
+
+        type:
+          'line',
+
+        data: {
+
+          labels:
+            labels,
+
+          datasets: [
+
+            {
+
+              label:
+                'Mes notes',
+
+              data:
+                values,
+
+              borderColor:
+                '#ff7fbf',
+
+              backgroundColor:
+                '#ffd0e0',
+
+              borderWidth:
+                3,
+
+              pointRadius:
+                5,
+
+              pointHoverRadius:
+                7,
+
+              fill:
+                false,
+
+              tension:
+                0.25
+            }
+
+          ]
+        },
+
+
+        options: {
+
+          responsive:
+            true,
+
+
+          maintainAspectRatio:
+            false,
+
+
+          plugins: {
+
+            legend: {
+
+              position:
+                'top'
+            }
+
+          },
+
+
+          scales: {
+
+            x: {
+
+              title: {
+
+                display:
+                  true,
+
+                text:
+                  'Évaluation'
+              }
+
+            },
+
+
+            y: {
+
+              min:
+                0,
+
+              max:
+                20,
+
+              ticks: {
+
+                stepSize:
+                  2
+              },
+
+              title: {
+
+                display:
+                  true,
+
+                text:
+                  'Note / 20'
+              }
+
+            }
+
+          }
+
+        }
+
+      }
+    );
+
+
+  /*
+    Résumé des moyennes
+  */
+
+  const summary =
+    document.getElementById(
+      'gradesSummary'
+    );
+
+  if (!summary) {
+    return;
+  }
+
+
+  const general =
+    computeGeneralAverage();
+
+
+  let html = `
+
+    <div
+      style="
+        display:flex;
+        gap:8px;
+        flex-wrap:wrap;
+      "
+    >
+
+      <div>
+
+        <strong>
+          Moyenne générale
+        </strong>
+
+        <div class="text-muted">
+
+          ${
+            isNaN(general)
+              ? '—'
+              : general.toFixed(2) +
+                '/20'
+          }
+
+        </div>
+
+      </div>
+  `;
+
+
+  store.subjects.forEach(
+    subject => {
+
+      const average =
+        computeSubjectAverage(
+          subject.id
+        );
+
+
+      html += `
+
+        <div>
+
+          <strong>
+            ${escapeHtml(
+              subject.name
+            )}
+          </strong>
+
+          <div class="text-muted">
+
+            ${
+              isNaN(average)
+                ? '—'
+                : average.toFixed(2) +
+                  '/20'
+            }
+
+          </div>
+
+        </div>
+
+      `;
+    }
+  );
+
+
+  html += `
+    </div>
+  `;
+
+
+  summary.innerHTML =
+    html;
+}
+
+
+/* =========================================================
+   OUTILS
+   ========================================================= */
+
+function getSubjectName(
+  subjectId
+) {
+
+  const subject =
+    store.subjects.find(
+      s =>
+        s.id ===
+        subjectId
+    );
+
+  return subject
+    ? subject.name
+    : 'Matière inconnue';
+}
+
+
+/* =========================================================
    FIN DU FICHIER
-   =========================== */
-/* FIN DU FICHIER */
+   ========================================================= */
