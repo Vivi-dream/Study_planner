@@ -493,38 +493,6 @@ function renderGradesChart(){
     `<div style="display:flex;gap:8px;flex-wrap:wrap">
       <div>
         <strong>Moyenne générale</strong>
-        <div class="text-muted">
-          ${Number.isNaN(general) ? '—' : general.toFixed(2)}
-        </div>
-      </div>` +
-
-    store.subjects.map(s => {
-      const avg = computeSubjectAverage(s.id);
-
-      return `
-        <div>
-          <strong>${escapeHtml(s.name)}</strong>
-          <div class="text-muted">
-            ${Number.isNaN(avg) ? '—' : avg.toFixed(2)}
-          </div>
-        </div>
-      `;
-    }).join('') +
-
-    `</div>`;
-}
-  el.querySelectorAll('button[data-action]').forEach(b=>{
-    b.addEventListener('click', e=>{
-      const id = e.target.dataset.id;
-      if(e.target.dataset.action==='view') openLessonViewer(id);
-      if(e.target.dataset.action==='delete') {
-        if(confirm('Supprimer la leçon et ses révisions ?')) {
-          deleteLesson(id);
-        }
-      }
-    });
-  });
-}
 
 // Evals render
 function renderEvals(){
